@@ -181,7 +181,7 @@
 "RULE_CARD_INVALID" = "无效";
 
 "RULE_TEXT_SCOPE_LABEL" = "作用域";
-"RULE_TEXT_HINT_IMAGE_ACCESSIBILITY_LABEL" = "通知示意图：展示标题、副标题与正文在通知中的位置。";
+"RULE_TEXT_HINT_IMAGE_ACCESSIBILITY_LABEL" = "通知示意图：展示标题与正文在通知中的位置。";
 "RULE_TEXT_EMPTY_TITLE" = "规则为空";
 "RULE_TEXT_EMPTY_MESSAGE" = "请输入一条规则。";
 "RULE_TEXT_INVALID_TITLE" = "规则无效";
@@ -189,12 +189,12 @@
 "RULE_TEXT_HINT_MESSAGE_DETAIL" = "例如一条通知标题是“QQ”，正文是“你的验证码是 1234”，你写“验证码”会命中；只写“QQ”不会因为应用名或标题而误伤。最适合日常使用。";
 "RULE_TEXT_HINT_TITLE_TITLE" = "标题：只匹配通知主标题";
 "RULE_TEXT_HINT_TITLE_DETAIL" = "例如标题是“付款成功”，你写“付款”就会命中；正文里就算没有“付款”，也会匹配。适合处理固定标题的系统通知。";
-"RULE_TEXT_HINT_SUBTITLE_TITLE" = "副标题：只匹配通知副标题";
-"RULE_TEXT_HINT_SUBTITLE_DETAIL" = "例如副标题是“来自小王”，你写“小王”就会命中；正文里没有“小王”也不影响。适合筛选来源、会话名、发件人。";
-"RULE_TEXT_HINT_ALL_TITLE" = "全部文本：标题、副标题、header、正文、message 全都会匹配";
-"RULE_TEXT_HINT_ALL_DETAIL" = "例如你写“验证码”，只要标题、正文或副标题任意一处出现“验证码”都会命中。适合做兜底，但也最容易误伤。";
+"RULE_TEXT_HINT_SUBTITLE_TITLE" = "副标题（已移除）";
+"RULE_TEXT_HINT_SUBTITLE_DETAIL" = "";
+"RULE_TEXT_HINT_ALL_TITLE" = "全部文本：标题、正文、message 全都会匹配";
+"RULE_TEXT_HINT_ALL_DETAIL" = "例如你写“验证码”，只要标题或正文出现“验证码”都会命中。适合做兜底，但也最容易误伤。";
 
-"RULES_LIST_CONTAINS_FOOTER" = "每条规则都可以选择匹配消息、标题、副标题或全部文本。";
+"RULES_LIST_CONTAINS_FOOTER" = "每条规则都可以选择匹配消息、标题或全部文本。";
 "RULES_LIST_EXCLUDE_FOOTER" = "排除规则命中时不转发（优先于包含规则），也支持选择匹配字段。";
 "RULES_LIST_REGEX_FOOTER" = "正则规则支持选择匹配字段，保存前会校验语法。";
 "RULES_LIST_EMPTY_TITLE" = "暂无规则";
