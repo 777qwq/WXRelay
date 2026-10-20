@@ -8,6 +8,9 @@
 @property (nonatomic, copy) NSArray<NSDictionary *> *targets;
 @end
 
+@implementation NFPWeChatTargetsController (Cell)
+@end
+
 @implementation NFPWeChatTargetsController
 
 - (void)reloadTargets {
@@ -22,8 +25,17 @@
     [self.tableView reloadData];
 }
 
+- (instancetype)initWithStyle:(UITableViewStyle)style {
+    return [super initWithStyle:UITableViewStyleInsetGrouped];
+}
+
+- (instancetype)init {
+    return [self initWithStyle:UITableViewStyleInsetGrouped];
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"target"];
     self.title = NFPLocalizedString(@"TARGETS_TITLE");
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addTarget:)];
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_DONE") style:UIBarButtonItemStyleDone target:self action:@selector(doneTapped:)];
@@ -68,7 +80,6 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"target" forIndexPath:indexPath];
-    if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"target"];
     NSDictionary *t = self.targets[indexPath.row];
     cell.textLabel.text = t[@"id"];
     NSUInteger contains = [t[@"contains"] isKindOfClass:[NSArray class]] ? [t[@"contains"] count] : 0;

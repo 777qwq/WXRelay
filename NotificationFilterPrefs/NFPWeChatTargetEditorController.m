@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowEnabled = 0, WPRowID, WPRowContains, WP
     [super viewDidLoad];
     self.title = self.targetId.length ? NFPLocalizedString(@"TARGET_EDIT_TITLE") : NFPLocalizedString(@"TARGET_ADD_TITLE");
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_DONE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
+    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow"];
     if (@available(iOS 15.0, *)) { self.tableView.sectionHeaderTopPadding = 0; }
 }
 
@@ -55,8 +56,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowEnabled = 0, WPRowID, WPRowContains, WP
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"row" forIndexPath:indexPath];
-    if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"row"];
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"wrow" forIndexPath:indexPath];
     cell.textLabel.text = nil;
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.detailTextLabel.text = nil;
