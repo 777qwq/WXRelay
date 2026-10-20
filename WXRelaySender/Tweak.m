@@ -88,12 +88,13 @@ static void WRSetupKeepAlive(void) {
         int sampleRate = 8000; int numSamples = sampleRate; int dataLen = numSamples * 2;
         int totalLen = 44 + dataLen;
         NSMutableData *wav = [NSMutableData dataWithCapacity:totalLen];
-        char hdr[44] = {'R','I','F','F',0,0,0,0,'W','A','V','E','f','m','t',' ',16,0,0,0,1,0,1,0,
-                        (char)(sampleRate&0xff),(char)((sampleRate>>8)&0xff),(char)((sampleRate>>16)&0xff),(char)((sampleRate>>24)&0xff),
-                        (char)((sampleRate*2)&0xff),(char)(((sampleRate*2)>>8)&0xff),2,0,16,0,
-                        'd','a','t','a',(char)(dataLen&0xff),(char)((dataLen>>8)&0xff),(char)((dataLen>>16)&0xff),(char)((dataLen>>24)&0xff)};
+        uint8_t hdr[44] = {'R','I','F','F',0,0,0,0,'W','A','V','E','f','m','t',' ',16,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,2,0,16,0,'d','a','t','a',0,0,0,0};
         int riffLen = totalLen - 8;
-        hdr[4]=(char)(riffLen&0xff); hdr[5]=(char)((riffLen>>8)&0xff); hdr[6]=(char)((riffLen>>16)&0xff); hdr[7]=(char)((riffLen>>24)&0xff);
+        int byteRate = sampleRate * 2;
+        hdr[4]=riffLen&0xff; hdr[5]=(riffLen>>8)&0xff; hdr[6]=(riffLen>>16)&0xff; hdr[7]=(riffLen>>24)&0xff;
+        hdr[24]=sampleRate&0xff; hdr[25]=(sampleRate>>8)&0xff; hdr[26]=(sampleRate>>16)&0xff; hdr[27]=(sampleRate>>24)&0xff;
+        hdr[28]=byteRate&0xff; hdr[29]=(byteRate>>8)&0xff; hdr[30]=(byteRate>>16)&0xff; hdr[31]=(byteRate>>24)&0xff;
+        hdr[36]=dataLen&0xff; hdr[37]=(dataLen>>8)&0xff; hdr[38]=(dataLen>>16)&0xff; hdr[39]=(dataLen>>24)&0xff;
         [wav appendBytes:hdr length:44];
         char zeros[256] = {0};
         for (int i = 0; i < dataLen; i += 256) [wav appendBytes:zeros length:MIN(256, dataLen - i)];
