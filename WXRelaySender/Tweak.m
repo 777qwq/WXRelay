@@ -29,10 +29,32 @@ static void wrLog(NSString *msg) {
     } @catch (NSException *e) { }
 }
 
+// v2.3.1 路A：备注/昵称 → wxid 解析；解析不到原样发送（wxid/群id/filehelper 直通）
+static NSString *WRResolveTargetID(NSString *targetId) {
+    @try {
+        Class CContactMgr = objc_getClass("CContactMgr");
+        Class MMServiceCenter = objc_getClass("MMServiceCenter");
+        if (!CContactMgr || !MMServiceCenter) return targetId;
+        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
+        if (!mgr || ![mgr respondsToSelector:@selector(getContactByDisplayName:)]) return targetId;
+        id contact = ((id(*)(id,SEL,id))objc_msgSend)(mgr, @selector(getContactByDisplayName:), targetId);
+        if (!contact) return targetId;
+        if (![contact respondsToSelector:@selector(m_nsUsrName)]) return targetId;
+        id wxid = ((id(*)(id,SEL))objc_msgSend)(contact, @selector(m_nsUsrName));
+        if ([wxid isKindOfClass:[NSString class]] && wxid.length > 0 && ![wxid isEqualToString:targetId]) {
+            wrLog([NSString stringWithFormat:@"resolve '%@' -> %@", targetId, wxid]);
+            return wxid;
+        }
+        return targetId;
+    } @catch (NSException *e) { return targetId; }
+}
+
 // v2.3.0 直发：进程内私 API，走微信原生发送管线（CMessageMgr AddMsg），不再依赖懒猫 handleOpenURL
 // 参考：DKWechatHelper sendMsg（8.x 实战）+ iWeChat dump 头；真机签名待验证
 static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     @try {
+        targetId = WRResolveTargetID(targetId);
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         Class CMessageMgr = objc_getClass("CMessageMgr");
         Class CMessageWrap = objc_getClass("CMessageWrap");

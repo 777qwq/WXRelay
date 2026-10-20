@@ -256,3 +256,6 @@
 "RULES_LIST_REGEX_ALLOW_PLACEHOLDER" = "Enter a regex to deliver, for example: code\\d{4,6}";
 
 "RULE_WHITELIST_DEFAULT_TITLE" = "Whitelist Default Block";
+"TARGET_SECTION_ID" = "Recipient ID";
+"TARGET_ID_PLACEHOLDER" = "wxid_xxx / group@chatroom / filehelper / remark name";
+"TARGET_ID_FOOTER" = "Messages are forwarded to this WeChat ID. Fill in wxid, group id (ending with @chatroom), filehelper, or the contact's remark/nickname (auto-resolved at send time).";

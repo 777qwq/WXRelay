@@ -20,8 +20,8 @@
 "TARGET_SECTION_ID" = "接收 id";
 "TARGET_SECTION_CONTAINS" = "包含关键词";
 "TARGET_SECTION_EXCLUDE" = "排除关键词";
-"TARGET_ID_PLACEHOLDER" = "wxid_xxx / 群id@chatroom / filehelper";
-"TARGET_ID_FOOTER" = "消息会转发给这个微信 id。用懒猫的「微信URL扩展」插件获取，群 id 以 @chatroom 结尾。";
+"TARGET_ID_PLACEHOLDER" = "wxid_xxx / 群id@chatroom / filehelper / 备注名";
+"TARGET_ID_FOOTER" = "消息会转发给这个微信 id。可直接填 wxid、群 id（@chatroom 结尾）、filehelper，或填对方备注/昵称（发送时自动解析为 wxid）。";
 "TARGET_CONTAINS_FOOTER" = "留空 = 全部转发给该目标（排除关键词仍生效）。每条可单独选作用域：消息 / 标题 / 全部文本。";
 "TARGET_EXCLUDE_FOOTER" = "命中任一排除关键词就不转发给该目标，优先级高于包含关键词。";
 "TARGET_ROW_EDIT_CONTAINS" = "编辑包含关键词";
