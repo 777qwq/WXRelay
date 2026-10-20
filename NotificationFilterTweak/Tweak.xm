@@ -133,10 +133,8 @@ static BOOL NFMarkForwardedIfNew(NFNotificationRecord *record) {
             // 带 ID：永久去重
             if ([NFForwardedIDs containsObject:nid]) { isNew = NO; return; }
             [NFForwardedIDs addObject:nid];
-            isNew = YES;
-            return;
         }
-        // 无 ID：内容 30 秒窗口
+        // 内容 30 秒窗口：对所有通知生效（重发会换 ID，仅 ID 去重不够）
         NSString *text = record.joinedText ?: @"";
         if (text.length == 0) { isNew = YES; return; }
         NSDate *seen = NFForwardedTextMap[text];
