@@ -75,12 +75,20 @@ static NSString *NFTextForScope(NSString *scope, NFNotificationRecord *record) {
     return record.joinedText ?: @"";
 }
 
-static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NFNotificationRecord *record) {
-    if (![entries isKindOfClass:[NSArray class]]) return NO;
+static NSArray *NFEnabledEntries(NSArray *entries) {
+    if (![entries isKindOfClass:[NSArray class]]) return @[];
+    NSMutableArray *out = [NSMutableArray array];
     for (NSDictionary *entry in entries) {
         if (![entry isKindOfClass:[NSDictionary class]]) continue;
         NSString *enabledVal = entry[@"Enabled"] ?: entry[@"enabled"];
-        if (enabledVal != nil && ![enabledVal boolValue]) continue; // 未启用规则视为留空
+        if (enabledVal != nil && ![enabledVal boolValue]) continue; // 未启用规则不计入
+        [out addObject:entry];
+    }
+    return out;
+}
+
+static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NFNotificationRecord *record) {
+    for (NSDictionary *entry in NFEnabledEntries(entries)) {
         NSString *ruleText = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"text"] isKindOfClass:[NSString class]] ? entry[@"text"] : @"") : (NSString *)entry;
         NSString *entryScope = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"scope"] isKindOfClass:[NSString class]] ? entry[@"scope"] : @"") : @"";
         NSString *haystack = NFTextForScope(entryScope.length ? entryScope : scope, record);
@@ -92,12 +100,11 @@ static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NFNotification
 // 判定：排除优先（命中不转）；包含留空=全量；包含命中=转；包含未命中=不转
 static BOOL NFWeChatTargetMatches(NSDictionary *target, NFNotificationRecord *record) {
     NSString *defaultScope = NFRuleScopeMessage;
-    NSArray *exclude = target[@"exclude"];
-    if ([exclude isKindOfClass:[NSArray class]] && exclude.count > 0 &&
-        NFEntryListMatches(exclude, defaultScope, record)) return NO;
-    NSArray *contains = target[@"contains"];
-    if (![contains isKindOfClass:[NSArray class]] || contains.count == 0) return YES;
-    return NFEntryListMatches(contains, defaultScope, record);
+    NSArray *exclude = NFEnabledEntries(target[@"exclude"]);
+    if (exclude.count > 0 && NFEntryListMatches(exclude, defaultScope, record)) return NO; // 1. 排除一票否决
+    NSArray *contains = NFEnabledEntries(target[@"contains"]); // 4. 无规则/全未启用 = 留空
+    if (contains.count == 0) return YES;
+    return NFEntryListMatches(contains, defaultScope, record); // 2. 命中转 / 3. 未命中不转
 }
 
 static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result);

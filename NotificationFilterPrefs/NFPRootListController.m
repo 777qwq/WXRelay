@@ -250,6 +250,17 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     return nil;
 }
 
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    PSSpecifier *sp = [self specifierAtIndexPath:indexPath];
+    NSString *ident = sp ? ([sp propertyForKey:PSIDKey] ?: @"") : @"";
+    if ([ident isEqualToString:@"targets-title"]) {
+        [tableView deselectRowAtIndexPath:indexPath animated:YES];
+        [self openTargetEditorWithIndex:-1];
+        return;
+    }
+    [super tableView:tableView didSelectRowAtIndexPath:indexPath];
+}
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
     // Belt and braces: some PSTableCell styles ignore the getter, so write the
