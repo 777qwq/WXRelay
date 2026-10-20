@@ -237,8 +237,8 @@
 "RULE_BLOCK_KEYWORDS_TITLE" = "包含关键词";
 "RULE_ALLOW_EXCEPTION_TITLE" = "排除规则";
 "RULE_REGEX_BLOCK_TITLE" = "正则规则";
-"RULE_ALLOW_KEYWORDS_TITLE" = "排除规则";
-"RULE_FORCE_BLOCK_TITLE" = "转发规则";
+"RULE_ALLOW_KEYWORDS_TITLE" = "排除关键词";
+"RULE_FORCE_BLOCK_TITLE" = "包含规则";
 "RULE_REGEX_ALLOW_TITLE" = "正则排除";
 
 "RULES_LIST_BLOCK_KEYWORDS_FOOTER" = "命中后会匹配通知。每条规则都可以选择匹配消息、标题、副标题或全部文本。";
