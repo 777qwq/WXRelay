@@ -81,7 +81,7 @@
 "RULE_REGEX_TITLE" = "正则规则";
 "SCOPE_MESSAGE" = "正文";
 "SCOPE_TITLE" = "标题";
-"SCOPE_SUBTITLE" = "副标题";
+"SCOPE_SUBTITLE" = "副标题（已移除）";
 "SCOPE_ALL" = "全部文本";
 
 "APP_RULES_SEARCH_PLACEHOLDER" = "搜索应用名或 Bundle ID";
@@ -241,7 +241,7 @@
 "RULE_FORCE_BLOCK_TITLE" = "包含规则";
 "RULE_REGEX_ALLOW_TITLE" = "正则排除";
 
-"RULES_LIST_BLOCK_KEYWORDS_FOOTER" = "命中后会匹配通知。每条规则都可以选择匹配消息、标题、副标题或全部文本。";
+"RULES_LIST_BLOCK_KEYWORDS_FOOTER" = "命中后会匹配通知。每条规则都可以选择匹配消息、标题或全部文本。";
 "RULES_LIST_ALLOW_EXCEPTION_FOOTER" = "命中后不转发（优先于包含规则检查）。";
 "RULES_LIST_REGEX_BLOCK_FOOTER" = "命中正则表达式后会匹配通知，保存前会校验语法。";
 "RULES_LIST_ALLOW_KEYWORDS_FOOTER" = "命中后不转发该通知；未命中的按包含规则正常判断。";
