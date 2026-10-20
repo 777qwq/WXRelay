@@ -115,6 +115,12 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
         if (tid.length && NFWeChatTargetMatches(target, record)) [hitTargets addObject:tid];
     }
     if (hitTargets.count == 0) return;
+    @autoreleasepool {
+        NFMatchResult *logResult = [[NFMatchResult alloc] init];
+        logResult.shouldBlock = YES;
+        logResult.matchedMode = @"forward";
+        NFAppendBlockedLog(record, logResult);
+    }
     NSString *container = NFWeChatContainerPath();
     if (!container) return;
     @try {
@@ -746,30 +752,6 @@ static void NFNotificationHistoryRefreshRequestCallback(CFNotificationCenterRef 
             NFProcessNotificationHistoryRefreshRequest();
         }
     });
-}
-
-static NFMatchResult *NFEvaluateRecord(NFNotificationRecord *record) {
-    NSDictionary *preferences = NFCopyPreferencesSnapshot();
-    NFMatchResult *result = [NFRuleEngine evaluateRecord:record preferences:preferences];
-    if (![preferences[NFEnabledKey] boolValue]) {
-        return result;
-    }
-
-    if (result.shouldBlock) {
-        NFRememberBlockedIdentityForRecord(record, result);
-        return result;
-    }
-
-    if (NFIsExplicitAllowResult(result)) {
-        return result;
-    }
-
-    NFMatchResult *cachedBlockedResult = NFCachedBlockedIdentityResultForRecord(record);
-    if (cachedBlockedResult.shouldBlock) {
-        return cachedBlockedResult;
-    }
-
-    return result;
 }
 
 static dispatch_queue_t NFBBServerQueue(void) {
