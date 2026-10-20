@@ -6,7 +6,7 @@ THEOS_DEVICE_IP = localhost
 
 include $(THEOS)/makefiles/common.mk
 
-SUBPROJECTS += NotificationFilterTweak NotificationFilterPrefs
+SUBPROJECTS += NotificationFilterTweak NotificationFilterPrefs WXRelaySender
 
 include $(THEOS_MAKE_PATH)/aggregate.mk
 
