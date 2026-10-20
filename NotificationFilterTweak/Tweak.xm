@@ -253,28 +253,6 @@ static void NFPurgeExpiredBlockedIdentityEntriesLocked(NSTimeInterval now) {
     }
 }
 
-static NSDictionary *NFCachedBlockedIdentityEntryForRecord(NFNotificationRecord *record) {
-    NSArray<NSString *> *identityKeys = NFBlockedIdentityKeysForRecord(record);
-    if (identityKeys.count == 0) {
-        return nil;
-    }
-
-    __block NSDictionary *matchedEntry = nil;
-    dispatch_sync(NFBlockedIdentityQueue, ^{
-        NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
-        NFPurgeExpiredBlockedIdentityEntriesLocked(now);
-        for (NSString *key in identityKeys) {
-            NSDictionary *entry = NFBlockedIdentityCache[key];
-            if (entry) {
-                matchedEntry = entry;
-                break;
-            }
-        }
-    });
-
-    return matchedEntry;
-}
-
 static void NFClearTransientBlockedCaches(void) {
     if (NFBlockedActionQueue) {
         dispatch_sync(NFBlockedActionQueue, ^{
