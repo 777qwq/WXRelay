@@ -158,46 +158,8 @@ static NSString *NFNormalizedStringValue(id value) {
     return [stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
-static NSTimeInterval NFBlockedActionDedupeWindow(void) {
-    return 2.0;
-}
-
 static NSTimeInterval NFBlockedIdentityTTL(void) {
     return 900.0;
-}
-
-static NSString *NFBlockedActionRecordKey(NFNotificationRecord *record, NFMatchResult *result) {
-    if (!record || !result.shouldBlock) {
-        return nil;
-    }
-
-    NSString *bulletinID = NFNormalizedStringValue(record.bulletinID);
-    NSString *recordID = NFNormalizedStringValue(record.recordID);
-    NSString *publisherBulletinID = NFNormalizedStringValue(record.publisherBulletinID);
-    if (bulletinID.length == 0 && recordID.length == 0 && publisherBulletinID.length == 0) {
-        return nil;
-    }
-
-    NSString *matchedPattern = NFNormalizedStringValue(result.matchedPattern);
-    NSString *matchedMode = NFNormalizedStringValue(result.matchedMode);
-
-    // For whitelist default block mode with no pattern, include content hash to distinguish different notifications
-    if (matchedPattern.length == 0 && [matchedMode isEqualToString:NFMatchModeWhitelistDefault]) {
-        NSString *contentForHash = [NSString stringWithFormat:@"%@|%@|%@",
-                                    NFNormalizedStringValue(record.title) ?: @"",
-                                    NFNormalizedStringValue(record.subtitle) ?: @"",
-                                    NFNormalizedStringValue(record.messageText) ?: @""];
-        matchedPattern = [NSString stringWithFormat:@"content:%lu", (unsigned long)[contentForHash hash]];
-    }
-
-    return [NSString stringWithFormat:@"%@|%@|%@|%@|%@|%@|%@",
-                                      NFNormalizedStringValue(record.bundleIdentifier) ?: @"",
-                                      NFNormalizedStringValue(record.sectionID) ?: @"",
-                                      bulletinID ?: @"",
-                                      recordID ?: @"",
-                                      publisherBulletinID ?: @"",
-                                      NFNormalizedStringValue(result.matchedScope) ?: @"",
-                                      matchedPattern ?: @""];
 }
 
 static NSArray<NSString *> *NFBlockedIdentityKeysForRecord(NFNotificationRecord *record) {
@@ -386,19 +348,6 @@ static NSDictionary *NFNotificationHistoryDictionaryFromRecord(NFNotificationRec
         entry[NFLogTimestampKey] = @([record.timestamp timeIntervalSince1970]);
     }
     return [entry copy];
-}
-
-static void NFStoreNotificationHistoryRecord(NFNotificationRecord *record) {
-    NSString *recordKey = NFNotificationHistoryRecordKeyFromRecord(record);
-    NSDictionary *entry = NFNotificationHistoryDictionaryFromRecord(record);
-    if (recordKey.length == 0 || !entry) {
-        return;
-    }
-
-    dispatch_sync(NFNotificationHistoryQueue, ^{
-        NFNotificationHistoryEntriesByKey[recordKey] = entry;
-        NFPersistNotificationHistoryMirrorEntriesLocked();
-    });
 }
 
 static NSArray<NSDictionary *> *NFSortedNotificationHistoryEntriesFromDictionaryEntries(NSArray<NSDictionary *> *entries) {
@@ -832,21 +781,6 @@ static NSUInteger NFNotificationRecordSignalScore(NFNotificationRecord *record) 
     }
 
     return score;
-}
-
-static NFNotificationRecord *NFBestRecordFromNotificationObject(id notificationObject,
-                                                                id fallbackSectionIdentifier) {
-    NFNotificationRecord *requestRecord = [NFNotificationRecord recordFromNotificationRequest:notificationObject];
-    NFBackfillRecordSectionIdentifier(requestRecord, fallbackSectionIdentifier);
-
-    NFNotificationRecord *bulletinRecord = [NFNotificationRecord recordFromBulletin:notificationObject];
-    NFBackfillRecordSectionIdentifier(bulletinRecord, fallbackSectionIdentifier);
-
-    if (NFNotificationRecordSignalScore(bulletinRecord) > NFNotificationRecordSignalScore(requestRecord)) {
-        return bulletinRecord;
-    }
-
-    return requestRecord;
 }
 
 static dispatch_queue_t NFBBServerQueue(void) {
