@@ -253,35 +253,6 @@ static void NFPurgeExpiredBlockedIdentityEntriesLocked(NSTimeInterval now) {
     }
 }
 
-static BOOL NFIsExplicitAllowResult(NFMatchResult *result) {
-    return !result.shouldBlock && [result.matchedMode isEqualToString:NFMatchModeExclude];
-}
-
-static void NFRememberBlockedIdentityForRecord(NFNotificationRecord *record, NFMatchResult *result) {
-    if (!record || !result.shouldBlock) {
-        return;
-    }
-
-    NSArray<NSString *> *identityKeys = NFBlockedIdentityKeysForRecord(record);
-    if (identityKeys.count == 0) {
-        return;
-    }
-
-    NSDictionary *entry = @{
-        @"timestamp": @([[NSDate date] timeIntervalSince1970]),
-        @"matchedScope": result.matchedScope ?: @"",
-        @"matchedMode": result.matchedMode ?: @"",
-        @"matchedPattern": result.matchedPattern ?: @""
-    };
-
-    dispatch_sync(NFBlockedIdentityQueue, ^{
-        NFPurgeExpiredBlockedIdentityEntriesLocked([entry[@"timestamp"] doubleValue]);
-        for (NSString *key in identityKeys) {
-            NFBlockedIdentityCache[key] = entry;
-        }
-    });
-}
-
 static NSDictionary *NFCachedBlockedIdentityEntryForRecord(NFNotificationRecord *record) {
     NSArray<NSString *> *identityKeys = NFBlockedIdentityKeysForRecord(record);
     if (identityKeys.count == 0) {
@@ -302,20 +273,6 @@ static NSDictionary *NFCachedBlockedIdentityEntryForRecord(NFNotificationRecord 
     });
 
     return matchedEntry;
-}
-
-static NFMatchResult *NFCachedBlockedIdentityResultForRecord(NFNotificationRecord *record) {
-    NSDictionary *entry = NFCachedBlockedIdentityEntryForRecord(record);
-    if (!entry) {
-        return nil;
-    }
-
-    NFMatchResult *result = [[NFMatchResult alloc] init];
-    result.shouldBlock = YES;
-    result.matchedScope = [entry[@"matchedScope"] isKindOfClass:[NSString class]] ? entry[@"matchedScope"] : nil;
-    result.matchedMode = [entry[@"matchedMode"] isKindOfClass:[NSString class]] ? entry[@"matchedMode"] : nil;
-    result.matchedPattern = [entry[@"matchedPattern"] isKindOfClass:[NSString class]] ? entry[@"matchedPattern"] : nil;
-    return result;
 }
 
 static void NFClearTransientBlockedCaches(void) {
