@@ -127,6 +127,21 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [fwdTargets setProperty:@"wxid_xxx,filehelper" forKey:PSPlaceholderKey];
     [specifiers addObject:fwdTargets];
 
+    PSSpecifier *kaGroup = [PSSpecifier emptyGroupSpecifier];
+    [kaGroup setProperty:@"微信后台保持常驻（静音保活），关闭后微信被系统回收时转发会延迟到下次打开微信。" forKey:PSFooterTextGroupKey];
+    [specifiers addObject:kaGroup];
+
+    PSSpecifier *kaToggle = [PSSpecifier preferenceSpecifierNamed:@"微信后台保活"
+                                                              target:self
+                                                                 set:@selector(setPreferenceValue:specifier:)
+                                                                 get:@selector(readPreferenceValue:)
+                                                              detail:nil
+                                                                 cell:PSSwitchCell
+                                                                 edit:nil];
+    [kaToggle setProperty:NFKeepAliveKey forKey:PSKeyNameKey];
+    [kaToggle setProperty:@YES forKey:PSDefaultValueKey];
+    [specifiers addObject:kaToggle];
+
     PSSpecifier *pagesGroup = [PSSpecifier groupSpecifierWithID:NFPRulesGroupSpecifierID];
     [pagesGroup setProperty:NFPLocalizedString(@"ROOT_RULES_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:pagesGroup];

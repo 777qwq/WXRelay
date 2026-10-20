@@ -110,21 +110,28 @@ static void WRSetupKeepAlive(void) {
     }
 }
 
-static NSString *WRConfig(NSString *key) {
-    NSString *p = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay.cfg"];
-    if (![[NSFileManager defaultManager] fileExistsAtPath:p]) {
-        [@"# WXRelay 发送端配置（keepAlive=0 可关后台保活）\nkeepAlive=1\n" writeToFile:p atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    }
-    NSString *content = [NSString stringWithContentsOfFile:p encoding:NSUTF8StringEncoding error:nil];
-    for (NSString *line in [content componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
-        NSString *l = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-        if (l.length == 0 || [l hasPrefix:@"#"]) continue;
-        NSRange eq = [l rangeOfString:@"="];
-        if (eq.location == NSNotFound) continue;
-        if ([[[l substringToIndex:eq.location] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] isEqualToString:key])
-            return [[l substringFromIndex:eq.location + 1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-    }
-    return nil;
+static BOOL WRKeepAliveEnabled(void) {
+    @try {
+        NSMutableArray<NSString *> *candidates = [NSMutableArray array];
+        [candidates addObject:@"/var/jb/var/mobile/Library/Preferences"];
+        [candidates addObject:@"/var/mobile/Library/Preferences"];
+        NSArray *jbRoots = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"/var/containers/Bundle/Application" error:nil];
+        for (NSString *d in jbRoots) {
+            if ([d hasPrefix:@".jbroot-"]) {
+                [candidates addObject:[[NSString stringWithFormat:@"/var/containers/Bundle/Application/%@", d] stringByAppendingPathComponent:@"var/mobile/Library/Preferences"]];
+            }
+        }
+        for (NSString *dir in candidates) {
+            NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:
+                [dir stringByAppendingPathComponent:@"com.tune.notificationfilter.plist"]];
+            if (prefs) {
+                id v = prefs[@"KeepAlive"];
+                wrLog([NSString stringWithFormat:@"keepAlive cfg from %@: %@", dir.lastPathComponent, v ?: @"(default)"]);
+                return v ? [v boolValue] : YES;
+            }
+        }
+    } @catch (NSException *e) { }
+    return YES;
 }
 
 __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
@@ -135,9 +142,8 @@ __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
             CFNotificationSuspensionBehaviorDeliverImmediately);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRFlushTasks(); // 启动补发积压
-            NSString *ka = WRConfig(@"keepAlive");
-            if (![ka isEqualToString:@"0"]) WRSetupKeepAlive();
-            else wrLog(@"keepAlive off (cfg)");
+            if (WRKeepAliveEnabled()) WRSetupKeepAlive();
+            else wrLog(@"keepAlive off (NF cfg)");
         });
     }
 }

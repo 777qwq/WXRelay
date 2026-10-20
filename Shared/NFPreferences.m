@@ -34,6 +34,7 @@ NSString * const NFPrefShowSystemAppsKey = @"PrefShowSystemApps";
 NSString * const NFPrefShowTrollAppsKey = @"PrefShowTrollApps";
 NSString * const NFWeChatForwardKey = @"WeChatForward";
 NSString * const NFWeChatTargetsKey = @"WeChatTargets";
+NSString * const NFKeepAliveKey = @"KeepAlive";
 
 NSString * const NFRulesEnabledKey = @"enabled";
 NSString * const NFRulesContainsKey = @"contains";
@@ -192,6 +193,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
         NFEnabledKey: @YES,
         NFGlobalRulesEnabledKey: @NO,
         NFGlobalContainsKey: @[],
+        NFKeepAliveKey: @YES,
         NFWeChatForwardKey: @NO,
         NFWeChatTargetsKey: @"",
         NFGlobalExcludeKey: @[],
@@ -657,6 +659,9 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
         normalizedPreferences[NFLoggingEnabledKey] = @([rawPreferences[NFLoggingEnabledKey] boolValue]);
     }
 
+    if ([rawPreferences[NFKeepAliveKey] respondsToSelector:@selector(boolValue)]) {
+        normalizedPreferences[NFKeepAliveKey] = @([rawPreferences[NFKeepAliveKey] boolValue]);
+    }
     if ([rawPreferences[NFWeChatForwardKey] respondsToSelector:@selector(boolValue)]) {
         normalizedPreferences[NFWeChatForwardKey] = @([rawPreferences[NFWeChatForwardKey] boolValue]);
     }
