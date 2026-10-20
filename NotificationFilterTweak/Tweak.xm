@@ -39,15 +39,19 @@ static NSDictionary *NFCopyPreferencesSnapshot(void) {
     return snapshot;
 }
 
-static NSArray<NSString *> *NFWeChatTargetList(void) {
-    NSString *raw = NFCopyPreferencesSnapshot()[NFWeChatTargetsKey];
+static NSArray<NSDictionary *> *NFWeChatTargetList(void) {
+    NSDictionary *prefs = NFCopyPreferencesSnapshot();
+    NSArray *list = prefs[NFWeChatTargetsListKey];
+    if ([list isKindOfClass:[NSArray class]]) return list;
+    // 旧版迁移：逗号分隔字符串 → 每个一个全量目标
+    NSString *raw = prefs[NFWeChatTargetsKey];
     if (![raw isKindOfClass:[NSString class]] || raw.length == 0) return @[];
-    NSMutableArray<NSString *> *targets = [NSMutableArray array];
+    NSMutableArray<NSDictionary *> *migrated = [NSMutableArray array];
     for (NSString *piece in [raw componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@",，;； "]]) {
         NSString *t = [piece stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (t.length > 0) [targets addObject:t];
+        if (t.length > 0) [migrated addObject:@{ @"id": t, @"contains": @[], @"exclude": @[] }];
     }
-    return targets;
+    return migrated;
 }
 
 static NSString *NFWeChatContainerPath(void) {
@@ -64,18 +68,56 @@ static NSString *NFWeChatContainerPath(void) {
     return nil;
 }
 
+static NSString *NFTextForScope(NSString *scope, NFNotificationRecord *record) {
+    if ([scope isEqualToString:NFRuleScopeTitle]) return record.title ?: @"";
+    if ([scope isEqualToString:NFRuleScopeSubtitle]) return record.subtitle ?: @"";
+    if ([scope isEqualToString:NFRuleScopeMessage]) return record.messageText ?: @"";
+    return record.joinedText ?: @"";
+}
+
+static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NSString *text) {
+    if (![entries isKindOfClass:[NSArray class]]) return NO;
+    for (NSDictionary *entry in entries) {
+        if (![entry isKindOfClass:[NSDictionary class]]) continue;
+        NSString *ruleText = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"text"] isKindOfClass:[NSString class]] ? entry[@"text"] : @"") : (NSString *)entry;
+        NSString *entryScope = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"scope"] isKindOfClass:[NSString class]] ? entry[@"scope"] : @"") : @"";
+        NSString *haystack = NFTextForScope(entryScope.length ? entryScope : scope, record);
+        if (ruleText.length > 0 && [haystack rangeOfString:ruleText].location != NSNotFound) return YES;
+    }
+    return NO;
+}
+
+// 判定：排除优先（命中不转）；包含留空=全量；包含命中=转；包含未命中=不转
+static BOOL NFWeChatTargetMatches(NSDictionary *target, NFNotificationRecord *record) {
+    NSString *defaultScope = NFRuleScopeMessage;
+    NSArray *exclude = target[@"exclude"];
+    if ([exclude isKindOfClass:[NSArray class]] && exclude.count > 0 &&
+        NFEntryListMatches(exclude, defaultScope, nil)) return NO;
+    NSArray *contains = target[@"contains"];
+    if (![contains isKindOfClass:[NSArray class]] || contains.count == 0) return YES;
+    return NFEntryListMatches(contains, defaultScope, nil);
+}
+
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
-    NSArray<NSString *> *targets = NFWeChatTargetList();
+    if (!NFShouldForwardToWeChat()) return;
+    NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
     NSString *text = record.joinedText.length > 0 ? record.joinedText : record.messageText;
     if (text.length == 0) return;
+    NSMutableArray<NSString *> *hitTargets = [NSMutableArray array];
+    for (NSDictionary *target in targets) {
+        if (![target isKindOfClass:[NSDictionary class]]) continue;
+        NSString *tid = [target[@"id"] isKindOfClass:[NSString class]] ? target[@"id"] : @"";
+        if (tid.length && NFWeChatTargetMatches(target, record)) [hitTargets addObject:tid];
+    }
+    if (hitTargets.count == 0) return;
     NSString *container = NFWeChatContainerPath();
     if (!container) return;
     @try {
         NSString *taskDir = [container stringByAppendingPathComponent:@"tmp/wxrelay_tasks"];
         [[NSFileManager defaultManager] createDirectoryAtPath:taskDir withIntermediateDirectories:YES attributes:nil error:nil];
         NSString *fn = [NSString stringWithFormat:@"task_%@.json", [[NSUUID UUID] UUIDString]];
-        NSDictionary *task = @{ @"targets": targets, @"text": text,
+        NSDictionary *task = @{ @"targets": hitTargets, @"text": text,
             @"ts": [NSString stringWithFormat:@"%f", [NSDate date].timeIntervalSince1970] };
         NSData *data = [NSJSONSerialization dataWithJSONObject:task options:NSJSONWritingPrettyPrinted error:nil];
         [data writeToFile:[taskDir stringByAppendingPathComponent:fn] atomically:YES];
@@ -788,11 +830,7 @@ static void NFPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 
 - (void)publishBulletinRequest:(id)request destinations:(unsigned long long)destinations {
     NFNotificationRecord *record = [NFNotificationRecord recordFromNotificationRequest:request];
-    NFMatchResult *result = NFEvaluateRecord(record);
-    if (result.shouldBlock) {
-        NFForwardMatchedRecordToWeChat(record);
-        NFAppendBlockedLog(record, result);
-    }
+    NFForwardMatchedRecordToWeChat(record);
     %orig;
 }
 
@@ -806,11 +844,7 @@ static void NFPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 
 - (void)publishBulletin:(id)bulletin destinations:(unsigned long long)destinations {
     NFNotificationRecord *record = [NFNotificationRecord recordFromBulletin:bulletin];
-    NFMatchResult *result = NFEvaluateRecord(record);
-    if (result.shouldBlock) {
-        NFForwardMatchedRecordToWeChat(record);
-        NFAppendBlockedLog(record, result);
-    }
+    NFForwardMatchedRecordToWeChat(record);
     %orig;
 }
 
@@ -836,11 +870,7 @@ static void NFPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 
 - (void)publishBulletin:(id)bulletin destinations:(unsigned long long)destinations alwaysToLockScreen:(BOOL)alwaysToLockScreen {
     NFNotificationRecord *record = [NFNotificationRecord recordFromBulletin:bulletin];
-    NFMatchResult *result = NFEvaluateRecord(record);
-    if (result.shouldBlock) {
-        NFForwardMatchedRecordToWeChat(record);
-        NFAppendBlockedLog(record, result);
-    }
+    NFForwardMatchedRecordToWeChat(record);
     %orig;
 }
 

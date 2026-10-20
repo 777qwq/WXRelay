@@ -4,6 +4,7 @@
 #import "../Shared/NFLogStore.h"
 #import "NFPLocalization.h"
 #import "NFPRulesListEditorController.h"
+#import "NFPWeChatTargetsController.h"
 #import "NFPAppRulesListController.h"
 #import "NFPImportExportController.h"
 #import "NFPLogsListController.h"
@@ -18,6 +19,7 @@ static NSString * const NFPGlobalRulesSpecifierID = @"ROOT_GLOBAL_RULES";
 static NSString * const NFPAppRulesSpecifierID = @"ROOT_APP_RULES";
 static NSString * const NFPImportExportSpecifierID = @"ROOT_IMPORT_EXPORT";
 static NSString * const NFPFilteredLogsSpecifierID = @"ROOT_FILTERED_LOGS";
+static NSString * const NFPWeChatTargetsSpecifierID = @"ROOT_WECHAT_TARGETS";
 static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/NotificationFilter";
 
 - (void)viewDidLoad {
@@ -44,6 +46,17 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     NSDictionary *preferences = [NFPreferences loadPreferences];
     return [NSString stringWithFormat:NFPLocalizedString(@"ROOT_SUMMARY_ENABLED_APPS_FORMAT"),
                                       (unsigned long)[NFPreferences enabledAppRulesCountFromPreferences:preferences]];
+}
+
+- (NSString *)wechatTargetsSummary {
+    NSDictionary *prefs = [NFPreferences loadPreferences];
+    NSArray *list = prefs[NFWeChatTargetsListKey];
+    return [NSString stringWithFormat:@"%lu 个目标", (unsigned long)([list isKindOfClass:[NSArray class]] ? list.count : 0)];
+}
+
+- (void)openWeChatTargets:(PSSpecifier *)specifier {
+    NFPWeChatTargetsController *controller = [[NFPWeChatTargetsController alloc] init];
+    [self.navigationController pushViewController:controller animated:YES];
 }
 
 - (NSString *)filteredLogsSummary {
@@ -74,43 +87,19 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [specifiers addObject:enabledSpecifier];
 
 
-    PSSpecifier *logGroup = [PSSpecifier emptyGroupSpecifier];
-    [logGroup setProperty:NFPLocalizedString(@"ROOT_LOG_ENABLED_FOOTER") forKey:PSFooterTextGroupKey];
-    [specifiers addObject:logGroup];
+    PSSpecifier *targetsGroup = [PSSpecifier emptyGroupSpecifier];
+    [targetsGroup setProperty:NFPLocalizedString(@"ROOT_TARGETS_FOOTER") forKey:PSFooterTextGroupKey];
+    [specifiers addObject:targetsGroup];
 
-    PSSpecifier *logEnabledSpecifier = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_LOG_ENABLED")
-                                                                      target:self
-                                                                         set:@selector(setPreferenceValue:specifier:)
-                                                                         get:@selector(readPreferenceValue:)
-                                                                      detail:nil
-                                                                        cell:PSSwitchCell
-                                                                        edit:nil];
-    [logEnabledSpecifier setProperty:NFLoggingEnabledKey forKey:PSKeyNameKey];
-    [logEnabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
-    [specifiers addObject:logEnabledSpecifier];
-
-    // WXRelayNF：转发目标区块
-    PSSpecifier *fwdGroup = [PSSpecifier emptyGroupSpecifier];
-    [fwdGroup setProperty:@"开启「启用转发」后，命中规则的微信消息/通知原文转发给目标 id（多个用逗号分隔）。排除规则命中则不转发。保存即时生效。" forKey:PSFooterTextGroupKey];
-    [specifiers addObject:fwdGroup];
-
-    PSSpecifier *fwdTargets = [PSSpecifier preferenceSpecifierNamed:@"转发目标 wxid"
-                                                              target:self
-                                                                 set:@selector(setPreferenceValue:specifier:)
-                                                                 get:@selector(readPreferenceValue:)
-                                                              detail:nil
-                                                                 cell:PSEditTextCell
-                                                                 edit:nil];
-    [fwdTargets setProperty:NFWeChatTargetsKey forKey:PSKeyNameKey];
-    [fwdTargets setProperty:@"" forKey:PSDefaultValueKey];
-    [fwdTargets setProperty:@"wxid_xxx,filehelper" forKey:PSPlaceholderKey];
-    [specifiers addObject:fwdTargets];
+    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_WECHAT_TARGETS")
+                                               action:@selector(openWeChatTargets:)
+                                           identifier:NFPWeChatTargetsSpecifierID]];
 
     PSSpecifier *kaGroup = [PSSpecifier emptyGroupSpecifier];
-    [kaGroup setProperty:@"微信后台保持常驻（静音保活），关闭后微信被系统回收时转发会延迟到下次打开微信。" forKey:PSFooterTextGroupKey];
+    [kaGroup setProperty:NFPLocalizedString(@"ROOT_KEEPALIVE_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:kaGroup];
 
-    PSSpecifier *kaToggle = [PSSpecifier preferenceSpecifierNamed:@"微信后台保活"
+    PSSpecifier *kaToggle = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_KEEPALIVE")
                                                               target:self
                                                                  set:@selector(setPreferenceValue:specifier:)
                                                                  get:@selector(readPreferenceValue:)
@@ -121,14 +110,22 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [kaToggle setProperty:@YES forKey:PSDefaultValueKey];
     [specifiers addObject:kaToggle];
 
-    PSSpecifier *pagesGroup = [PSSpecifier groupSpecifierWithID:NFPRulesGroupSpecifierID];
-    [pagesGroup setProperty:NFPLocalizedString(@"ROOT_RULES_FOOTER") forKey:PSFooterTextGroupKey];
-    [specifiers addObject:pagesGroup];
+    PSSpecifier *logGroup = [PSSpecifier emptyGroupSpecifier];
+    [logGroup setProperty:NFPLocalizedString(@"ROOT_LOGGING_FOOTER") forKey:PSFooterTextGroupKey];
+    [specifiers addObject:logGroup];
 
-    [specifiers addObject:[self ruleLinkWithKind:NFPRuleEditorKindContains]];
-    [specifiers addObject:[self ruleLinkWithKind:NFPRuleEditorKindExclude]];
-    [specifiers addObject:[self ruleLinkWithKind:NFPRuleEditorKindRegex]];
-    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_FILTERED_LOGS")
+    PSSpecifier *logEnabledSpecifier = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_LOGGING")
+                                                                      target:self
+                                                                         set:@selector(setPreferenceValue:specifier:)
+                                                                         get:@selector(readPreferenceValue:)
+                                                                      detail:nil
+                                                                        cell:PSSwitchCell
+                                                                        edit:nil];
+    [logEnabledSpecifier setProperty:NFLoggingEnabledKey forKey:PSKeyNameKey];
+    [logEnabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
+    [specifiers addObject:logEnabledSpecifier];
+
+    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_FORWARDED_LOGS")
                                                action:@selector(openLogs:)
                                            identifier:NFPFilteredLogsSpecifierID]];
 
@@ -168,6 +165,9 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     }
     if ([identifier isEqualToString:NFPAppRulesSpecifierID]) {
         return [self appRulesSummary];
+    }
+    if ([identifier isEqualToString:NFPWeChatTargetsSpecifierID]) {
+        return [self wechatTargetsSummary];
     }
     if ([identifier isEqualToString:NFPFilteredLogsSpecifierID]) {
         return [self filteredLogsSummary];
@@ -212,57 +212,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     }
 
     [NFPreferences postPreferencesChangedNotification];
-}
-
-- (NSString *)ruleCountSummary:(NFPRuleEditorKind)kind {
-    NSDictionary *rules = [NFPreferences globalRulesFromPreferences:[NFPreferences loadPreferences]];
-    NSString *key = nil;
-    if (kind == NFPRuleEditorKindContains) key = NFRulesContainsKey;
-    else if (kind == NFPRuleEditorKindExclude) key = NFRulesExcludeKey;
-    else key = NFRulesRegexKey;
-    NSUInteger count = [rules[key] count];
-    return [NSString stringWithFormat:@"%lu 条", (unsigned long)count];
-}
-
-- (PSSpecifier *)ruleLinkWithKind:(NFPRuleEditorKind)kind {
-    NSString *name = nil;
-    SEL action = @selector(openRulesEditor:);
-    NSString *identifier = nil;
-    switch (kind) {
-        case NFPRuleEditorKindContains: name = NFPLocalizedString(@"RULES_LINK_CONTAINS"); identifier = @"rules-contains"; break;
-        case NFPRuleEditorKindExclude:  name = NFPLocalizedString(@"RULES_LINK_EXCLUDE");  identifier = @"rules-exclude";  break;
-        default:                        name = NFPLocalizedString(@"RULES_LINK_REGEX");    identifier = @"rules-regex";    break;
-    }
-    PSSpecifier *specifier = [self linkSpecifierWithName:name action:action identifier:identifier];
-    return specifier;
-}
-
-- (void)openRulesEditor:(PSSpecifier *)specifier {
-    NSString *identifier = [specifier propertyForKey:PSIDKey];
-    NFPRuleEditorKind kind = [identifier isEqualToString:@"rules-exclude"] ? NFPRuleEditorKindExclude
-                          : [identifier isEqualToString:@"rules-regex"] ? NFPRuleEditorKindRegex
-                          : NFPRuleEditorKindContains;
-    NSString *title = nil; NSString *key = nil;
-    if (kind == NFPRuleEditorKindContains) { title = NFPLocalizedString(@"RULES_LINK_CONTAINS"); key = NFGlobalContainsKey; }
-    else if (kind == NFPRuleEditorKindExclude) { title = NFPLocalizedString(@"RULES_LINK_EXCLUDE"); key = NFGlobalExcludeKey; }
-    else { title = NFPLocalizedString(@"RULES_LINK_REGEX"); key = NFGlobalRegexKey; }
-
-    NSDictionary *prefs = [NFPreferences loadPreferences];
-    __weak typeof(self) weakSelf = self;
-    NFPRulesListEditorController *controller = [[NFPRulesListEditorController alloc] initWithTitle:title
-                                                                                         editorKind:kind
-                                                                                              rules:prefs[key] ?: @[]
-                                                                                        saveHandler:^(NSArray<NSString *> *rules) {
-        NSMutableDictionary *preferences = [NFPreferences loadMutablePreferences];
-        preferences[key] = rules;
-        NSError *error = nil;
-        if (![NFPreferences savePreferences:preferences error:&error]) {
-            [weakSelf presentError:error];
-            return;
-        }
-        [NFPreferences postPreferencesChangedNotification];
-    }];
-    [self.navigationController pushViewController:controller animated:YES];
 }
 
 - (void)openAppRules:(PSSpecifier *)specifier {

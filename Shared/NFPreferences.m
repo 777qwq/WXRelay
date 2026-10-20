@@ -34,6 +34,7 @@ NSString * const NFPrefShowSystemAppsKey = @"PrefShowSystemApps";
 NSString * const NFPrefShowTrollAppsKey = @"PrefShowTrollApps";
 NSString * const NFWeChatForwardKey = @"WeChatForward";
 NSString * const NFWeChatTargetsKey = @"WeChatTargets";
+NSString * const NFWeChatTargetsListKey = @"WeChatTargetsList";
 NSString * const NFKeepAliveKey = @"KeepAlive";
 
 NSString * const NFRulesEnabledKey = @"enabled";
@@ -667,6 +668,9 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
     }
     if ([rawPreferences[NFWeChatTargetsKey] isKindOfClass:[NSString class]]) {
         normalizedPreferences[NFWeChatTargetsKey] = rawPreferences[NFWeChatTargetsKey];
+    }
+    if ([rawPreferences[NFWeChatTargetsListKey] isKindOfClass:[NSArray class]]) {
+        normalizedPreferences[NFWeChatTargetsListKey] = rawPreferences[NFWeChatTargetsListKey];
     }
 
     NSMutableArray<NSString *> *normalizedDisabledList = [NSMutableArray array];
