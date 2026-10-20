@@ -76,7 +76,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowEnabled = 0, WPRowID, WPRowContains, WP
         field.autocapitalizationType = UITextAutocapitalizationTypeNone;
         [field addTarget:self action:@selector(idChanged:) forControlEvents:UIControlEventEditingChanged];
         self.idField = field;
-        cell.contentView.addSubview(field);
+        [cell.contentView addSubview:field];
         field.frame = CGRectMake(16, 4, 300, 36);
     } else if (indexPath.section == WPRowContains) {
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_CONTAINS");
