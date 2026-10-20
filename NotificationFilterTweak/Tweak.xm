@@ -114,13 +114,13 @@ static BOOL NFMarkForwardedIfNew(NSString *key) {
     __block BOOL isNew = NO;
     dispatch_sync(NFForwardedQueue, ^{
         NSDate *now = [NSDate date];
-        NSMutableArray<NSString *> *stale = [NSMutableArray array];
+        NSMutableSet<NSString *> *stale = [NSMutableSet set];
         for (NSString *k in NFForwardedKeys) {
             // key 格式：<时间戳>|<id 或内容>；带 ID 的永不过期，兜底内容 10 秒过期
             NSString *ts = [k componentsSeparatedByString:@"|"].firstObject;
             if (now.timeIntervalSince1970 - ts.doubleValue > 10) [stale addObject:k];
         }
-        [NFForwardedKeys removeObjectsInArray:stale];
+        [NFForwardedKeys minusSet:stale];
         if ([NFForwardedKeys containsObject:key]) {
             isNew = NO;
         } else {
