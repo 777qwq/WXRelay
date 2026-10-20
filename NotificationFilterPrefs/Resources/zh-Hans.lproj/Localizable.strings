@@ -232,7 +232,7 @@
 "PER_APP_RULES_MODE_BLACKLIST" = "黑名单模式";
 "PER_APP_RULES_MODE_WHITELIST" = "排除模式";
 "PER_APP_RULES_ENABLED_FOOTER_BLACKLIST" = "黑名单模式会匹配命中包含关键词或正则规则的通知；命中排除规则时不转发。";
-"PER_APP_RULES_ENABLED_FOOTER_WHITELIST" = "排除模式只放行命中放行关键词或正则排除的通知；命中转发规则时优先匹配，未命中时默认匹配。";
+"PER_APP_RULES_ENABLED_FOOTER_WHITELIST" = "排除模式只转发命中包含关键词或正则规则的通知，其余不转发。";
 
 "RULE_BLOCK_KEYWORDS_TITLE" = "包含关键词";
 "RULE_ALLOW_EXCEPTION_TITLE" = "排除规则";
@@ -244,8 +244,8 @@
 "RULES_LIST_BLOCK_KEYWORDS_FOOTER" = "命中后会匹配通知。每条规则都可以选择匹配消息、标题、副标题或全部文本。";
 "RULES_LIST_ALLOW_EXCEPTION_FOOTER" = "命中后不转发（优先于包含规则检查）。";
 "RULES_LIST_REGEX_BLOCK_FOOTER" = "命中正则表达式后会匹配通知，保存前会校验语法。";
-"RULES_LIST_ALLOW_KEYWORDS_FOOTER" = "命中后会放行通知；没有命中放行关键词或正则排除的通知会默认匹配。";
-"RULES_LIST_FORCE_BLOCK_FOOTER" = "命中后会在检查放行关键词和正则排除前直接匹配。";
+"RULES_LIST_ALLOW_KEYWORDS_FOOTER" = "命中后不转发该通知；未命中的按包含规则正常判断。";
+"RULES_LIST_FORCE_BLOCK_FOOTER" = "命中后转发（优先于排除规则检查）。";
 "RULES_LIST_REGEX_ALLOW_FOOTER" = "命中正则表达式后不转发该通知，保存前会校验语法。";
 
 "RULES_LIST_BLOCK_KEYWORDS_PLACEHOLDER" = "输入需要匹配的内容，例如：推广";
