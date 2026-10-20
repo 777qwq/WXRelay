@@ -116,9 +116,9 @@ static BOOL NFMarkForwardedIfNew(NSString *key) {
         NSDate *now = [NSDate date];
         NSMutableArray<NSString *> *stale = [NSMutableArray array];
         for (NSString *k in NFForwardedKeys) {
-            // key 格式：<时间戳>|<id>，超 60 秒清除
+            // key 格式：<时间戳>|<id 或内容>；带 ID 的永不过期，兜底内容 10 秒过期
             NSString *ts = [k componentsSeparatedByString:@"|"].firstObject;
-            if (now.timeIntervalSince1970 - ts.doubleValue > 60) [stale addObject:k];
+            if (now.timeIntervalSince1970 - ts.doubleValue > 10) [stale addObject:k];
         }
         [NFForwardedKeys removeObjectsInArray:stale];
         if ([NFForwardedKeys containsObject:key]) {
@@ -138,10 +138,9 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
         record.joinedText ?: @""];
     // ID 相同才判重；无 ID 的通知用 内容+10 秒窗口
     if (record.bulletinID.length || record.recordID.length) {
-        dedupeKey = [NSString stringWithFormat:@"%f|%@", [NSDate date].timeIntervalSince1970,
-            record.bulletinID ?: record.recordID];
+        dedupeKey = [NSString stringWithFormat:@"0|%@", record.bulletinID ?: record.recordID]; // 0=永不过期
     } else {
-        dedupeKey = [NSString stringWithFormat:@"%f|%@", [NSDate date].timeIntervalSince1970, record.joinedText];
+        dedupeKey = [NSString stringWithFormat:@"%f|%@", [NSDate date].timeIntervalSince1970, record.joinedText]; // 兜底 10 秒窗
     }
     if (!NFMarkForwardedIfNew(dedupeKey)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
