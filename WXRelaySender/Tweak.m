@@ -42,7 +42,7 @@ static NSString *WRResolveTargetID(NSString *targetId) {
         if (!contact) return targetId;
         if (![contact respondsToSelector:@selector(m_nsUsrName)]) return targetId;
         id wxid = ((id(*)(id,SEL))objc_msgSend)(contact, @selector(m_nsUsrName));
-        if ([wxid isKindOfClass:[NSString class]] && wxid.length > 0 && ![wxid isEqualToString:targetId]) {
+        if ([wxid isKindOfClass:[NSString class]] && [(NSString *)wxid length] > 0 && ![wxid isEqualToString:targetId]) {
             wrLog([NSString stringWithFormat:@"resolve '%@' -> %@", targetId, wxid]);
             return wxid;
         }
