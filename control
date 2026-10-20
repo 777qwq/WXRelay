@@ -6,4 +6,4 @@ Description: 微信通知按目标转发。每个目标=接收id+独立开关+�
 Maintainer: Tune
 Author: 777qwq
 Section: Tweaks
-Version: 2.2.0
+Version: 2.2.1

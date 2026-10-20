@@ -21,7 +21,7 @@
 "TARGET_SECTION_CONTAINS" = "包含关键词";
 "TARGET_SECTION_EXCLUDE" = "排除关键词";
 "TARGET_ID_PLACEHOLDER" = "wxid_xxx / 群id@chatroom / filehelper";
-"TARGET_ID_FOOTER" = "消息会转发给这个微信 id。用懒猫插件的复制按钮获取，群 id 以 @chatroom 结尾。";
+"TARGET_ID_FOOTER" = "消息会转发给这个微信 id。用懒猫的「微信URL扩展」插件获取，群 id 以 @chatroom 结尾。";
 "TARGET_CONTAINS_FOOTER" = "留空 = 全部转发给该目标（排除关键词仍生效）。每条可单独选作用域：消息 / 标题 / 全部文本。";
 "TARGET_EXCLUDE_FOOTER" = "命中任一排除关键词就不转发给该目标，优先级高于包含关键词。";
 "TARGET_ROW_EDIT_CONTAINS" = "编辑包含关键词";
@@ -32,6 +32,7 @@
 "COMMON_OK" = "好";
 
 "ROOT_FORWARDED_LOGS" = "已转发通知";
+"ROOT_TARGETS_TITLE" = "转发目标";
 "ROOT_ENABLE_FILTER" = "全局开关";
 "ROOT_DELETE_FILTERED" = "从通知中心删除匹配通知";
 "ROOT_DELETE_FOOTER" = "开启后，已匹配通知会从通知中心移除；未开启时，禁用插件后，历史匹配通知会在通知中心恢复显示。";

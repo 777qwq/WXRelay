@@ -79,20 +79,14 @@
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.translatesAutoresizingMaskIntoConstraints = NO;
         button.tag = index;
-        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
-        configuration.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
-            NSMutableDictionary<NSAttributedStringKey, id> *attributes = [incoming mutableCopy];
-            attributes[NSFontAttributeName] = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-            return attributes;
-        };
-        button.configuration = configuration;
         button.layer.cornerRadius = 12.0;
         button.layer.borderWidth = 1.0;
         button.titleLabel.adjustsFontSizeToFitWidth = YES;
         button.titleLabel.minimumScaleFactor = 0.72;
         button.titleLabel.lineBreakMode = NSLineBreakByClipping;
         [button setTitle:item[@"title"] forState:UIControlStateNormal];
+        button.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+        button.contentEdgeInsets = UIEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
         [button addTarget:self action:@selector(scopeButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [button.heightAnchor constraintEqualToConstant:38.0].active = YES;
         [scopeRow addArrangedSubview:button];

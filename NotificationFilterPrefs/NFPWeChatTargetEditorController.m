@@ -33,7 +33,8 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     [super viewDidLoad];
     self.title = self.targetId.length ? NFPLocalizedString(@"TARGET_EDIT_TITLE") : NFPLocalizedString(@"TARGET_ADD_TITLE");
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_SAVE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
-    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow"];
+    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow-id"];
+    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow-link"];
     if (@available(iOS 15.0, *)) { self.tableView.sectionHeaderTopPadding = 0; }
 }
 
@@ -54,12 +55,14 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"wrow" forIndexPath:indexPath];
+    NSString *reuse = (indexPath.section == WPRowID) ? @"wrow-id" : @"wrow-link";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuse forIndexPath:indexPath];
     cell.textLabel.text = nil;
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.detailTextLabel.text = nil;
     if (indexPath.section == WPRowID) {
         cell.accessoryType = UITableViewCellAccessoryNone;
+        for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
         UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 320, 36)];
         field.placeholder = NFPLocalizedString(@"TARGET_ID_PLACEHOLDER");
         field.text = self.targetId;

@@ -131,6 +131,15 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [enabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
     [specifiers addObject:enabledSpecifier];
 
+    PSSpecifier *targetsHeader = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_TARGETS_TITLE")
+                                                                 target:self
+                                                                    set:nil
+                                                                    get:nil
+                                                                 detail:nil
+                                                                   cell:PSGroupCell
+                                                                   edit:nil];
+    [specifiers addObject:targetsHeader];
+
     PSSpecifier *targetsGroup = [PSSpecifier emptyGroupSpecifier];
     [targetsGroup setProperty:NFPLocalizedString(@"ROOT_TARGETS_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:targetsGroup];
@@ -235,6 +244,7 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
         NSInteger index = [cellIdentifier componentsSeparatedByString:@"-"].lastObject.integerValue;
         NSArray *list = [self targetListFromPrefs];
         UISwitch *sw = [[UISwitch alloc] init];
+        sw.accessibilityIdentifier = @"wxrelay-target-switch";
         sw.tag = index;
         if (index < (NSInteger)list.count) {
             NSDictionary *t = list[index];
@@ -243,8 +253,9 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
         [sw addTarget:self action:@selector(targetSwitchChanged:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = sw;
         cell.detailTextLabel.text = nil;
-    } else {
-        cell.accessoryView = nil;
+    } else if ([cell.accessoryView isKindOfClass:[UISwitch class]]
+               && [cell.accessoryView.accessibilityIdentifier isEqualToString:@"wxrelay-target-switch"]) {
+        cell.accessoryView = nil; // 只清我们自己挂的开关，别动 PSSwitchCell 的系统开关
     }
     return cell;
 }
