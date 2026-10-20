@@ -84,15 +84,29 @@ static void WRSetupKeepAlive(void) {
         AVAudioSession *session = [AVAudioSession sharedInstance];
         [session setCategory:AVAudioSessionCategoryPlayback withOptions:AVAudioSessionCategoryOptionMixWithOthers error:nil];
         [session setActive:YES error:nil];
-        NSString *path = [NSString stringWithFormat:@"%@/1sec.caf", [[NSBundle bundleWithIdentifier:@"com.apple.UIKit"] resourcePath]];
-        AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] error:nil];
-        if (!player) { wrLog(@"keepalive: player nil"); return; }
+        // 内存生成 1 秒静音 WAV（8000Hz/16bit/mono），不依赖任何文件
+        int sampleRate = 8000; int numSamples = sampleRate; int dataLen = numSamples * 2;
+        int totalLen = 44 + dataLen;
+        NSMutableData *wav = [NSMutableData dataWithCapacity:totalLen];
+        char hdr[44] = {'R','I','F','F',0,0,0,0,'W','A','V','E','f','m','t',' ',16,0,0,0,1,0,1,0,
+                        (char)(sampleRate&0xff),(char)((sampleRate>>8)&0xff),(char)((sampleRate>>16)&0xff),(char)((sampleRate>>24)&0xff),
+                        (char)((sampleRate*2)&0xff),(char)(((sampleRate*2)>>8)&0xff),2,0,16,0,
+                        'd','a','t','a',(char)(dataLen&0xff),(char)((dataLen>>8)&0xff),(char)((dataLen>>16)&0xff),(char)((dataLen>>24)&0xff)};
+        int riffLen = totalLen - 8;
+        hdr[4]=(char)(riffLen&0xff); hdr[5]=(char)((riffLen>>8)&0xff); hdr[6]=(char)((riffLen>>16)&0xff); hdr[7]=(char)((riffLen>>24)&0xff);
+        [wav appendBytes:hdr length:44];
+        char zeros[256] = {0};
+        for (int i = 0; i < dataLen; i += 256) [wav appendBytes:zeros length:MIN(256, dataLen - i)];
+        AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithData:wav error:nil];
+        if (!player) { wrLog(@"keepalive: player nil (wav)"); return; }
         [player setNumberOfLoops:-1];
-        [player setVolume:1.0f];
+        [player setVolume:0.01f];
         [player play];
         objc_setAssociatedObject([UIApplication sharedApplication], @selector(keyWindow), player, OBJC_ASSOCIATION_RETAIN);
-        wrLog(@"keepalive: silent audio looping");
-    } @catch (NSException *e) { wrLog([NSString stringWithFormat:@"keepalive EXC: %@", e.name]); }
+        wrLog(@"keepalive: silent wav looping");
+    } @catch (NSException *e) {
+        wrLog([NSString stringWithFormat:@"keepalive EXC: %@", e.name]);
+    }
 }
 
 static NSString *WRConfig(NSString *key) {

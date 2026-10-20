@@ -99,6 +99,34 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [logEnabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
     [specifiers addObject:logEnabledSpecifier];
 
+    // WXRelayNF：转发目标区块
+    PSSpecifier *fwdGroup = [PSSpecifier emptyGroupSpecifier];
+    [fwdGroup setProperty:@"开启后，命中规则的微信消息/通知原文转发给目标 id（多个用逗号分隔）。保存即写入配置并即时生效，无需重启。" forKey:PSFooterTextGroupKey];
+    [specifiers addObject:fwdGroup];
+
+    PSSpecifier *fwdToggle = [PSSpecifier preferenceSpecifierNamed:@"启用转发"
+                                                              target:self
+                                                                 set:@selector(setPreferenceValue:specifier:)
+                                                                 get:@selector(readPreferenceValue:)
+                                                              detail:nil
+                                                                 cell:PSSwitchCell
+                                                                 edit:nil];
+    [fwdToggle setProperty:NFWeChatForwardKey forKey:PSKeyNameKey];
+    [fwdToggle setProperty:@NO forKey:PSDefaultValueKey];
+    [specifiers addObject:fwdToggle];
+
+    PSSpecifier *fwdTargets = [PSSpecifier preferenceSpecifierNamed:@"转发目标 wxid"
+                                                              target:self
+                                                                 set:@selector(setPreferenceValue:specifier:)
+                                                                 get:@selector(readPreferenceValue:)
+                                                              detail:nil
+                                                                 cell:PSEditTextCell
+                                                                 edit:nil];
+    [fwdTargets setProperty:NFWeChatTargetsKey forKey:PSKeyNameKey];
+    [fwdTargets setProperty:@"" forKey:PSDefaultValueKey];
+    [fwdTargets setProperty:@"wxid_xxx,filehelper" forKey:PSPlaceholderKey];
+    [specifiers addObject:fwdTargets];
+
     PSSpecifier *pagesGroup = [PSSpecifier groupSpecifierWithID:NFPRulesGroupSpecifierID];
     [pagesGroup setProperty:NFPLocalizedString(@"ROOT_RULES_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:pagesGroup];

@@ -13,7 +13,7 @@
 		<key>isController</key>
 		<true/>
 		<key>label</key>
-		<string>Notification Filter</string>
+		<string>WXRelay NF 通知转发</string>
 	</dict>
 </dict>
 </plist>

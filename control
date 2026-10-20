@@ -4,6 +4,6 @@ Depends: mobilesubstrate, preferenceloader
 Architecture: iphoneos-arm
 Description: Powerful notification filtering for jailbroken iOS
 Maintainer: Tune
-Author: Tune
+Author: 777qwq
 Section: Tweaks
-Version: 1.7.0
+Version: 1.7.1
