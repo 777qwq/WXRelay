@@ -255,6 +255,8 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     // Belt and braces: some PSTableCell styles ignore the getter, so write the
     // summary straight onto the cell's value label when one exists.
     NSString *summary = [self readLinkSummary:[self specifierAtIndexPath:indexPath]];
+    PSSpecifier *rowSpecifier = [self specifierAtIndexPath:indexPath];
+    NSString *cellIdentifier = rowSpecifier ? ([rowSpecifier propertyForKey:PSIDKey] ?: @"") : @"";
     if ([cellIdentifier isEqualToString:@"targets-title"]) {
         cell.textLabel.textColor = [UIColor labelColor];
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
