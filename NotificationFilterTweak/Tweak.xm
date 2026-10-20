@@ -102,6 +102,8 @@ static BOOL NFShouldForwardToWeChat(void) {
     return [NFCopyPreferencesSnapshot()[NFEnabledKey] boolValue];
 }
 
+static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result);
+
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     if (!NFShouldForwardToWeChat()) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
