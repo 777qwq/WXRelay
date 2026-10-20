@@ -238,7 +238,10 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 }
 
 - (void)openRulesEditor:(PSSpecifier *)specifier {
-    NFPRuleEditorKind kind = (NFPRuleEditorKind)[objc_getAssociatedObject(specifier, @selector(ruleLinkWithKind:)) integerValue];
+    NSString *identifier = [specifier propertyForKey:PSIDKey];
+    NFPRuleEditorKind kind = [identifier isEqualToString:@"rules-exclude"] ? NFPRuleEditorKindExclude
+                          : [identifier isEqualToString:@"rules-regex"] ? NFPRuleEditorKindRegex
+                          : NFPRuleEditorKindContains;
     NSString *title = nil; NSString *key = nil;
     if (kind == NFPRuleEditorKindContains) { title = NFPLocalizedString(@"RULES_LINK_CONTAINS"); key = NFGlobalContainsKey; }
     else if (kind == NFPRuleEditorKindExclude) { title = NFPLocalizedString(@"RULES_LINK_EXCLUDE"); key = NFGlobalExcludeKey; }
