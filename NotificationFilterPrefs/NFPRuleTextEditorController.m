@@ -71,7 +71,6 @@
     NSArray<NSDictionary *> *scopeItems = @[
         @{@"title": NFPLocalizedScopeName(NFRuleScopeMessage), @"scope": NFRuleScopeMessage},
         @{@"title": NFPLocalizedScopeName(NFRuleScopeTitle), @"scope": NFRuleScopeTitle},
-        @{@"title": NFPLocalizedScopeName(NFRuleScopeSubtitle), @"scope": NFRuleScopeSubtitle},
         @{@"title": NFPLocalizedScopeName(NFRuleScopeAll), @"scope": NFRuleScopeAll}
     ];
     NSMutableArray<UIButton *> *buttons = [NSMutableArray arrayWithCapacity:scopeItems.count];
@@ -309,8 +308,6 @@
         case 1:
             return NFRuleScopeTitle;
         case 2:
-            return NFRuleScopeSubtitle;
-        case 3:
             return NFRuleScopeAll;
         default:
             return NFRuleScopeMessage;
