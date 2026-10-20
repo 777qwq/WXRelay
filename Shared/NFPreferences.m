@@ -32,6 +32,8 @@ NSString * const NFLogEntryLimitKey = @"LogEntryLimit";
 NSString * const NFPrefOnlyConfiguredAppsKey = @"PrefOnlyConfiguredApps";
 NSString * const NFPrefShowSystemAppsKey = @"PrefShowSystemApps";
 NSString * const NFPrefShowTrollAppsKey = @"PrefShowTrollApps";
+NSString * const NFWeChatForwardKey = @"WeChatForward";
+NSString * const NFWeChatTargetsKey = @"WeChatTargets";
 
 NSString * const NFRulesEnabledKey = @"enabled";
 NSString * const NFRulesContainsKey = @"contains";
@@ -190,6 +192,8 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
         NFEnabledKey: @YES,
         NFGlobalRulesEnabledKey: @NO,
         NFGlobalContainsKey: @[],
+        NFWeChatForwardKey: @NO,
+        NFWeChatTargetsKey: @"",
         NFGlobalExcludeKey: @[],
         NFGlobalRegexKey: @[],
         NFAppRulesKey: @{},
@@ -651,6 +655,13 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
     }
     if ([rawPreferences[NFLoggingEnabledKey] isKindOfClass:[NSNumber class]]) {
         normalizedPreferences[NFLoggingEnabledKey] = @([rawPreferences[NFLoggingEnabledKey] boolValue]);
+    }
+
+    if ([rawPreferences[NFWeChatForwardKey] respondsToSelector:@selector(boolValue)]) {
+        normalizedPreferences[NFWeChatForwardKey] = @([rawPreferences[NFWeChatForwardKey] boolValue]);
+    }
+    if ([rawPreferences[NFWeChatTargetsKey] isKindOfClass:[NSString class]]) {
+        normalizedPreferences[NFWeChatTargetsKey] = rawPreferences[NFWeChatTargetsKey];
     }
 
     NSMutableArray<NSString *> *normalizedDisabledList = [NSMutableArray array];

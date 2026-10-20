@@ -19,6 +19,10 @@ extern NSString * const NFPrefOnlyConfiguredAppsKey;
 extern NSString * const NFPrefShowSystemAppsKey;
 extern NSString * const NFPrefShowTrollAppsKey;
 
+// WXRelay forward keys
+extern NSString * const NFWeChatForwardKey;
+extern NSString * const NFWeChatTargetsKey;
+
 extern NSString * const NFRulesEnabledKey;
 extern NSString * const NFRulesContainsKey;
 extern NSString * const NFRulesExcludeKey;

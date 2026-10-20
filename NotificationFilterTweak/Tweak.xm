@@ -6,7 +6,6 @@
 #import <objc/runtime.h>
 #import "NFNotificationRecord.h"
 #import "NFRuleEngine.h"
-#import "NFPreferences.h"
 #import "../Shared/NFPreferences.h"
 #import "../Shared/NFLogStore.h"
 #import "../Shared/NFNotificationHistoryBridge.h"
