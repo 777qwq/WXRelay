@@ -3,7 +3,7 @@
  *
  * 职责（单一）：
  *   1. 监听 darwin com.mos.wxrelay.task + 启动补发
- *   2. 消费 wxrelay_tasks/*.json（targets+text）→ 懒猫链路发送
+ *   2. 消费 wxrelay_tasks JSON（targets+text）→ 懒猫链路发送
  *   3. keepAlive 默认开（wxrelay.cfg keepAlive=0 可关）
  * 匹配逻辑全部在 SB 端（WXRelayNF 主体），本进程不做任何规则判断。
  * 日志：微信沙盒 tmp/wxrelay.log
