@@ -3,7 +3,7 @@
 #import "../Shared/NFPreferences.h"
 #import "../Shared/NFLogStore.h"
 #import "NFPLocalization.h"
-#import "NFPGlobalRulesController.h"
+#import "NFPRulesListEditorController.h"
 #import "NFPAppRulesListController.h"
 #import "NFPImportExportController.h"
 #import "NFPLogsListController.h"
@@ -125,9 +125,9 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [pagesGroup setProperty:NFPLocalizedString(@"ROOT_RULES_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:pagesGroup];
 
-    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_GLOBAL_RULES")
-                                               action:@selector(openGlobalRules:)
-                                           identifier:NFPGlobalRulesSpecifierID]];
+    [specifiers addObject:[self ruleLinkWithKind:NFPRuleEditorKindContains]];
+    [specifiers addObject:[self ruleLinkWithKind:NFPRuleEditorKindExclude]];
+    [specifiers addObject:[self ruleLinkWithKind:NFPRuleEditorKindRegex]];
     [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_FILTERED_LOGS")
                                                action:@selector(openLogs:)
                                            identifier:NFPFilteredLogsSpecifierID]];
@@ -157,8 +157,14 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 // leaves the row without a summary (import/export).
 - (id)readLinkSummary:(PSSpecifier *)specifier {
     NSString *identifier = [specifier propertyForKey:PSIDKey];
-    if ([identifier isEqualToString:NFPGlobalRulesSpecifierID]) {
-        return [self globalRulesSummary];
+    if ([identifier isEqualToString:@"rules-contains"]) {
+        return [self ruleCountSummary:NFPRuleEditorKindContains];
+    }
+    if ([identifier isEqualToString:@"rules-exclude"]) {
+        return [self ruleCountSummary:NFPRuleEditorKindExclude];
+    }
+    if ([identifier isEqualToString:@"rules-regex"]) {
+        return [self ruleCountSummary:NFPRuleEditorKindRegex];
     }
     if ([identifier isEqualToString:NFPAppRulesSpecifierID]) {
         return [self appRulesSummary];
@@ -208,8 +214,51 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [NFPreferences postPreferencesChangedNotification];
 }
 
-- (void)openGlobalRules:(PSSpecifier *)specifier {
-    NFPGlobalRulesController *controller = [[NFPGlobalRulesController alloc] initWithStyle:UITableViewStyleInsetGrouped];
+- (NSString *)ruleCountSummary:(NFPRuleEditorKind)kind {
+    NSDictionary *rules = [NFPreferences globalRulesFromPreferences:[NFPreferences loadPreferences]];
+    NSString *key = nil;
+    if (kind == NFPRuleEditorKindContains) key = NFRulesContainsKey;
+    else if (kind == NFPRuleEditorKindExclude) key = NFRulesExcludeKey;
+    else key = NFRulesRegexKey;
+    NSUInteger count = [rules[key] count];
+    return [NSString stringWithFormat:@"%lu 条", (unsigned long)count];
+}
+
+- (PSSpecifier *)ruleLinkWithKind:(NFPRuleEditorKind)kind {
+    NSString *name = nil;
+    SEL action = @selector(openRulesEditor:);
+    NSString *identifier = nil;
+    switch (kind) {
+        case NFPRuleEditorKindContains: name = NFPLocalizedString(@"RULES_LINK_CONTAINS"); identifier = @"rules-contains"; break;
+        case NFPRuleEditorKindExclude:  name = NFPLocalizedString(@"RULES_LINK_EXCLUDE");  identifier = @"rules-exclude";  break;
+        default:                        name = NFPLocalizedString(@"RULES_LINK_REGEX");    identifier = @"rules-regex";    break;
+    }
+    PSSpecifier *specifier = [self linkSpecifierWithName:name action:action identifier:identifier];
+    return specifier;
+}
+
+- (void)openRulesEditor:(PSSpecifier *)specifier {
+    NFPRuleEditorKind kind = (NFPRuleEditorKind)[objc_getAssociatedObject(specifier, @selector(ruleLinkWithKind:)) integerValue];
+    NSString *title = nil; NSString *key = nil;
+    if (kind == NFPRuleEditorKindContains) { title = NFPLocalizedString(@"RULES_LINK_CONTAINS"); key = NFGlobalContainsKey; }
+    else if (kind == NFPRuleEditorKindExclude) { title = NFPLocalizedString(@"RULES_LINK_EXCLUDE"); key = NFGlobalExcludeKey; }
+    else { title = NFPLocalizedString(@"RULES_LINK_REGEX"); key = NFGlobalRegexKey; }
+
+    NSDictionary *prefs = [NFPreferences loadPreferences];
+    __weak typeof(self) weakSelf = self;
+    NFPRulesListEditorController *controller = [[NFPRulesListEditorController alloc] initWithTitle:title
+                                                                                         editorKind:kind
+                                                                                              rules:prefs[key] ?: @[]
+                                                                                        saveHandler:^(NSArray<NSString *> *rules) {
+        NSMutableDictionary *preferences = [NFPreferences loadMutablePreferences];
+        preferences[key] = rules;
+        NSError *error = nil;
+        if (![NFPreferences savePreferences:preferences error:&error]) {
+            [weakSelf presentError:error];
+            return;
+        }
+        [NFPreferences postPreferencesChangedNotification];
+    }];
     [self.navigationController pushViewController:controller animated:YES];
 }
 

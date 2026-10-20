@@ -337,7 +337,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
 
 + (NSDictionary *)globalRulesFromPreferences:(NSDictionary *)preferences {
     NSDictionary *normalizedPreferences = [self normalizedPreferencesFromDictionary:preferences];
-    return [self normalizedRulesDictionaryFromEnabled:[normalizedPreferences[NFGlobalRulesEnabledKey] boolValue]
+    return [self normalizedRulesDictionaryFromEnabled:YES
                                              contains:normalizedPreferences[NFGlobalContainsKey]
                                               exclude:normalizedPreferences[NFGlobalExcludeKey]
                                                 regex:normalizedPreferences[NFGlobalRegexKey]];

@@ -1,11 +1,15 @@
 "ROOT_TITLE" = "通知匹配";
-"ROOT_TOGGLE_FOOTER" = "开启后，命中规则的通知原文转发给目标 id，即时生效。注意：微信通知的标题=发送者昵称或群名，正文=消息内容，按需选作用域。";
+"ROOT_TOGGLE_FOOTER" = "打开后：命中下面规则的通知，原文会立刻转发给目标 id；原通知照常显示。\n微信消息的标题=发送者昵称或群名，正文=消息内容，按需选作用域。";
+
+"RULES_LINK_CONTAINS" = "包含规则";
+"RULES_LINK_EXCLUDE" = "排除规则";
+"RULES_LINK_REGEX" = "正则规则";
 "ROOT_ENABLE_FILTER" = "启用转发";
 "ROOT_DELETE_FILTERED" = "从通知中心删除匹配通知";
 "ROOT_DELETE_FOOTER" = "开启后，已匹配通知会从通知中心移除；未开启时，禁用插件后，历史匹配通知会在通知中心恢复显示。";
 "ROOT_LOG_ENABLED" = "记录转发日志";
 "ROOT_LOG_ENABLED_FOOTER" = "关闭后，被转发的通知不再写入日志。";
-"ROOT_RULES_FOOTER" = "规则匹配顺序：全局规则。命中排除规则则不转发。";
+"规则匹配顺序：从上往下依次判断。命中“包含/正则”→ 转发；命中“排除”→ 不转发。改动保存后立即生效。";
 "ROOT_PROJECT_LINK_TEXT" = "GitHub";
 "ROOT_GLOBAL_RULES" = "全局规则";
 "ROOT_APP_RULES" = "应用规则";

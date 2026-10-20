@@ -8,7 +8,6 @@ NotificationFilterPrefs_FILES = \
 	NFPLocalization.m \
 	NFPRootListController.m \
 	NFPAppInfoProvider.m \
-	NFPGlobalRulesController.m \
 	NFPAppRulesListController.m \
 	NFPPerAppRulesController.m \
 	NFPMultilineRulesEditorController.m \
