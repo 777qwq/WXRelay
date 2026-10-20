@@ -31,6 +31,7 @@
 "COMMON_DONE" = "完成";
 "COMMON_OK" = "好";
 
+"ROOT_FORWARDED_LOGS" = "已转发通知";
 "ROOT_ENABLE_FILTER" = "启用转发";
 "ROOT_DELETE_FILTERED" = "从通知中心删除匹配通知";
 "ROOT_DELETE_FOOTER" = "开启后，已匹配通知会从通知中心移除；未开启时，禁用插件后，历史匹配通知会在通知中心恢复显示。";
