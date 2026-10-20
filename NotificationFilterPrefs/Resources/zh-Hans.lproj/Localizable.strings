@@ -1,4 +1,4 @@
-"ROOT_TITLE" = "通知匹配";
+"ROOT_TITLE" = "WXRelay NF";
 "ROOT_TOGGLE_FOOTER" = "打开后：命中下面规则的通知，原文会立刻转发给目标 id；原通知照常显示。\n微信消息的标题=发送者昵称或群名，正文=消息内容，按需选作用域。";
 
 "RULES_LINK_CONTAINS" = "包含规则";
