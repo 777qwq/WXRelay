@@ -140,12 +140,12 @@ static BOOL NFMarkForwardedIfNew(NFNotificationRecord *record) {
         NSString *text = record.joinedText ?: @"";
         if (text.length == 0) { isNew = YES; return; }
         NSDate *seen = NFForwardedTextMap[text];
-        if (seen && now.timeIntervalSinceDate(seen) < 30) { isNew = NO; return; }
+        if (seen && now.timeIntervalSince1970 - seen.timeIntervalSince1970 < 30) { isNew = NO; return; }
         NFForwardedTextMap[text] = now;
         // 清理过期
         NSMutableArray *stale = [NSMutableArray array];
         [NFForwardedTextMap enumerateKeysAndObjectsUsingBlock:^(NSString *k, NSDate *t, BOOL *stop) {
-            if (now.timeIntervalSinceDate(t) >= 30) [stale addObject:k];
+            if (now.timeIntervalSince1970 - t.timeIntervalSince1970 >= 30) [stale addObject:k];
         }];
         [NFForwardedTextMap removeObjectsForKeys:stale];
         isNew = YES;
