@@ -98,14 +98,52 @@ static BOOL NFWeChatTargetMatches(NSDictionary *target, NFNotificationRecord *re
     return NFEntryListMatches(contains, defaultScope, record);
 }
 
-static BOOL NFShouldForwardToWeChat(void) {
-    return [NFCopyPreferencesSnapshot()[NFEnabledKey] boolValue];
-}
-
 static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result);
 
+// 转发去重：同一通知可能路过多个 BBServer 路径，60 秒内只转一次
+static NSMutableSet<NSString *> *NFForwardedKeys = nil;
+static dispatch_queue_t NFForwardedQueue = nil;
+
+static BOOL NFMarkForwardedIfNew(NSString *key) {
+    if (key.length == 0) return YES;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        NFForwardedKeys = [NSMutableSet set];
+        NFForwardedQueue = dispatch_queue_create("com.mos.wxrelay.dedupe", DISPATCH_QUEUE_SERIAL);
+    });
+    __block BOOL isNew = NO;
+    dispatch_sync(NFForwardedQueue, ^{
+        NSDate *now = [NSDate date];
+        NSMutableArray<NSString *> *stale = [NSMutableArray array];
+        for (NSString *k in NFForwardedKeys) {
+            // key 格式：<时间戳>|<id>，超 60 秒清除
+            NSString *ts = [k componentsSeparatedByString:@"|"].firstObject;
+            if (now.timeIntervalSince1970 - ts.doubleValue > 60) [stale addObject:k];
+        }
+        [NFForwardedKeys removeObjectsInArray:stale];
+        if ([NFForwardedKeys containsObject:key]) {
+            isNew = NO;
+        } else {
+            [NFForwardedKeys addObject:key];
+            isNew = YES;
+        }
+    });
+    return isNew;
+}
+
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
-    if (!NFShouldForwardToWeChat()) return;
+    NSString *dedupeKey = [NSString stringWithFormat:@"%f|%@|%@",
+        [NSDate date].timeIntervalSince1970,
+        record.bulletinID ?: record.publisherBulletinID ?: record.recordID ?: @"",
+        record.joinedText ?: @""];
+    // ID 相同才判重；无 ID 的通知用 内容+10 秒窗口
+    if (record.bulletinID.length || record.recordID.length) {
+        dedupeKey = [NSString stringWithFormat:@"%f|%@", [NSDate date].timeIntervalSince1970,
+            record.bulletinID ?: record.recordID];
+    } else {
+        dedupeKey = [NSString stringWithFormat:@"%f|%@", [NSDate date].timeIntervalSince1970, record.joinedText];
+    }
+    if (!NFMarkForwardedIfNew(dedupeKey)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
     NSString *text = record.joinedText.length > 0 ? record.joinedText : record.messageText;

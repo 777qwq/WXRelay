@@ -75,17 +75,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [toggleGroup setProperty:NFPLocalizedString(@"ROOT_TOGGLE_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:toggleGroup];
 
-    PSSpecifier *enabledSpecifier = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_ENABLE_FILTER")
-                                                                   target:self
-                                                                      set:@selector(setPreferenceValue:specifier:)
-                                                                      get:@selector(readPreferenceValue:)
-                                                                   detail:nil
-                                                                     cell:PSSwitchCell
-                                                                     edit:nil];
-    [enabledSpecifier setProperty:NFEnabledKey forKey:PSKeyNameKey];
-    [enabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
-    [specifiers addObject:enabledSpecifier];
-
 
     PSSpecifier *targetsGroup = [PSSpecifier emptyGroupSpecifier];
     [targetsGroup setProperty:NFPLocalizedString(@"ROOT_TARGETS_FOOTER") forKey:PSFooterTextGroupKey];
