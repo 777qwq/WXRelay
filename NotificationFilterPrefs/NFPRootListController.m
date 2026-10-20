@@ -163,7 +163,7 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
                                                                    set:nil
                                                                    get:nil
                                                                 detail:nil
-                                                                  cell:PSSubtitleCell
+                                                                  cell:PSLinkCell
                                                                   edit:nil];
     [specifiers addObject:targetsTitle];
 
