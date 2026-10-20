@@ -6,6 +6,7 @@
 #import <objc/runtime.h>
 #import "NFNotificationRecord.h"
 #import "NFRuleEngine.h"
+#import "NFPreferences.h"
 #import "../Shared/NFPreferences.h"
 #import "../Shared/NFLogStore.h"
 #import "../Shared/NFNotificationHistoryBridge.h"
@@ -124,10 +125,6 @@ static NSMutableDictionary *NFBuildBlockedLogEntry(NFNotificationRecord *record,
 
 static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result) {
     if (!result.shouldBlock) {
-        return;
-    }
-
-    if (!NFShouldLogBlockedRecord(record)) {
         return;
     }
 
