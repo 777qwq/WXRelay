@@ -5,7 +5,7 @@
 "ROOT_DELETE_FOOTER" = "开启后，已匹配通知会从通知中心移除；未开启时，禁用插件后，历史匹配通知会在通知中心恢复显示。";
 "ROOT_LOG_ENABLED" = "记录转发日志";
 "ROOT_LOG_ENABLED_FOOTER" = "关闭后，被转发的通知不再写入日志。";
-"ROOT_RULES_FOOTER" = "规则匹配顺序：全局规则 → 单应用规则。命中排除规则直接放行。\n\nGitHub";
+"ROOT_RULES_FOOTER" = "规则匹配顺序：全局规则 → 单应用规则。命中排除规则则不转发。\n\nGitHub";
 "ROOT_PROJECT_LINK_TEXT" = "GitHub";
 "ROOT_GLOBAL_RULES" = "全局规则";
 "ROOT_APP_RULES" = "应用规则";
@@ -39,7 +39,7 @@
 
 "GLOBAL_RULES_TITLE" = "全局规则";
 "GLOBAL_RULES_TOGGLE_FOOTER" = "关闭后，全局规则不会参与匹配。";
-"GLOBAL_RULES_LIST_FOOTER" = "这些规则会作用到所有应用；命中排除规则时会优先放行。";
+"GLOBAL_RULES_LIST_FOOTER" = "这些规则会作用到所有应用；命中排除规则时不转发。";
 "GLOBAL_RULES_ENABLE" = "启用全局规则";
 "GLOBAL_RULES_SAVE_FAILED_MESSAGE" = "无法保存全局规则。";
 
@@ -195,12 +195,12 @@
 "RULE_TEXT_HINT_ALL_DETAIL" = "例如你写“验证码”，只要标题、正文或副标题任意一处出现“验证码”都会命中。适合做兜底，但也最容易误伤。";
 
 "RULES_LIST_CONTAINS_FOOTER" = "每条规则都可以选择匹配消息、标题、副标题或全部文本。";
-"RULES_LIST_EXCLUDE_FOOTER" = "排除规则命中时优先放行，也支持选择匹配字段。";
+"RULES_LIST_EXCLUDE_FOOTER" = "排除规则命中时不转发（优先于包含规则），也支持选择匹配字段。";
 "RULES_LIST_REGEX_FOOTER" = "正则规则支持选择匹配字段，保存前会校验语法。";
 "RULES_LIST_EMPTY_TITLE" = "暂无规则";
 "RULES_LIST_EMPTY_DETAIL" = "右上角可直接新增一条。";
 "RULES_LIST_CONTAINS_PLACEHOLDER" = "输入一条需要匹配的消息内容，例如：支付成功";
-"RULES_LIST_EXCLUDE_PLACEHOLDER" = "输入一条需要放行的消息内容，例如：验证码";
+"RULES_LIST_EXCLUDE_PLACEHOLDER" = "输入一条不转发的消息内容，例如：验证码";
 "RULES_LIST_REGEX_PLACEHOLDER" = "输入一条正则表达式，例如：验证码\\d{4,6}";
 "RULES_LIST_DELETE_CONFIRM_MESSAGE_FORMAT" = "将删除已选中的 %lu 条规则。";
 "RULES_LIST_SELECTED_COUNT_TITLE_FORMAT" = "已选 %lu 条";
@@ -231,28 +231,28 @@
 "PER_APP_RULES_MODE_MESSAGE" = "选择该应用规则如何判断哪些通知会被匹配。";
 "PER_APP_RULES_MODE_BLACKLIST" = "黑名单模式";
 "PER_APP_RULES_MODE_WHITELIST" = "排除模式";
-"PER_APP_RULES_ENABLED_FOOTER_BLACKLIST" = "黑名单模式会匹配命中转发关键词或正则转发的通知；命中放行排除时优先放行。";
-"PER_APP_RULES_ENABLED_FOOTER_WHITELIST" = "排除模式只放行命中放行关键词或正则放行的通知；命中强制转发时优先匹配，未命中时默认匹配。";
+"PER_APP_RULES_ENABLED_FOOTER_BLACKLIST" = "黑名单模式会匹配命中包含关键词或正则规则的通知；命中排除规则时不转发。";
+"PER_APP_RULES_ENABLED_FOOTER_WHITELIST" = "排除模式只放行命中放行关键词或正则排除的通知；命中转发规则时优先匹配，未命中时默认匹配。";
 
 "RULE_BLOCK_KEYWORDS_TITLE" = "包含关键词";
-"RULE_ALLOW_EXCEPTION_TITLE" = "放行排除";
+"RULE_ALLOW_EXCEPTION_TITLE" = "排除规则";
 "RULE_REGEX_BLOCK_TITLE" = "正则规则";
 "RULE_ALLOW_KEYWORDS_TITLE" = "排除规则";
 "RULE_FORCE_BLOCK_TITLE" = "转发规则";
 "RULE_REGEX_ALLOW_TITLE" = "正则排除";
 
 "RULES_LIST_BLOCK_KEYWORDS_FOOTER" = "命中后会匹配通知。每条规则都可以选择匹配消息、标题、副标题或全部文本。";
-"RULES_LIST_ALLOW_EXCEPTION_FOOTER" = "命中后会在检查转发关键词和正则转发前直接放行。";
+"RULES_LIST_ALLOW_EXCEPTION_FOOTER" = "命中后不转发（优先于包含规则检查）。";
 "RULES_LIST_REGEX_BLOCK_FOOTER" = "命中正则表达式后会匹配通知，保存前会校验语法。";
-"RULES_LIST_ALLOW_KEYWORDS_FOOTER" = "命中后会放行通知；没有命中放行关键词或正则放行的通知会默认匹配。";
-"RULES_LIST_FORCE_BLOCK_FOOTER" = "命中后会在检查放行关键词和正则放行前直接匹配。";
-"RULES_LIST_REGEX_ALLOW_FOOTER" = "命中正则表达式后会放行通知，保存前会校验语法。";
+"RULES_LIST_ALLOW_KEYWORDS_FOOTER" = "命中后会放行通知；没有命中放行关键词或正则排除的通知会默认匹配。";
+"RULES_LIST_FORCE_BLOCK_FOOTER" = "命中后会在检查放行关键词和正则排除前直接匹配。";
+"RULES_LIST_REGEX_ALLOW_FOOTER" = "命中正则表达式后不转发该通知，保存前会校验语法。";
 
 "RULES_LIST_BLOCK_KEYWORDS_PLACEHOLDER" = "输入需要匹配的内容，例如：推广";
-"RULES_LIST_ALLOW_EXCEPTION_PLACEHOLDER" = "输入始终放行的内容，例如：验证码";
+"RULES_LIST_ALLOW_EXCEPTION_PLACEHOLDER" = "输入始终不转发的内容，例如：验证码";
 "RULES_LIST_REGEX_BLOCK_PLACEHOLDER" = "输入用于匹配的正则表达式，例如：推广\\d{4,6}";
-"RULES_LIST_ALLOW_KEYWORDS_PLACEHOLDER" = "输入需要放行的内容，例如：验证码";
+"RULES_LIST_ALLOW_KEYWORDS_PLACEHOLDER" = "输入不转发的消息内容，例如：验证码";
 "RULES_LIST_FORCE_BLOCK_PLACEHOLDER" = "输入继续转发的内容，例如：广告";
-"RULES_LIST_REGEX_ALLOW_PLACEHOLDER" = "输入用于放行的正则表达式，例如：验证码\\d{4,6}";
+"RULES_LIST_REGEX_ALLOW_PLACEHOLDER" = "输入用于排除的正则表达式，例如：验证码\\d{4,6}";
 
 "RULE_WHITELIST_DEFAULT_TITLE" = "排除默认转发";
