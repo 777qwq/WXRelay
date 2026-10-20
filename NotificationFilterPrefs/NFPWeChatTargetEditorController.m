@@ -33,7 +33,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowEnabled = 0, WPRowID, WPRowContains, WP
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = self.targetId.length ? NFPLocalizedString(@"TARGET_EDIT_TITLE") : NFPLocalizedString(@"TARGET_ADD_TITLE");
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_DONE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_SAVE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow"];
     if (@available(iOS 15.0, *)) { self.tableView.sectionHeaderTopPadding = 0; }
 }

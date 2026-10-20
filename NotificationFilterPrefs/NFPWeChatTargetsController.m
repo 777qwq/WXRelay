@@ -38,7 +38,6 @@
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"target"];
     self.title = NFPLocalizedString(@"TARGETS_TITLE");
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addTarget:)];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_DONE") style:UIBarButtonItemStyleDone target:self action:@selector(doneTapped:)];
     if (@available(iOS 15.0, *)) { self.tableView.sectionHeaderTopPadding = 0; }
 }
 
