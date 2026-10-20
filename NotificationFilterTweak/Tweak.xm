@@ -216,43 +216,6 @@ static NSTimeInterval NFBlockedIdentityTTL(void) {
     return 900.0;
 }
 
-static NSArray<NSString *> *NFBlockedIdentityKeysForRecord(NFNotificationRecord *record) {
-    NSMutableArray<NSString *> *keys = [NSMutableArray array];
-
-    NSString *bulletinID = NFNormalizedStringValue(record.bulletinID);
-    if (bulletinID.length > 0) {
-        [keys addObject:[NSString stringWithFormat:@"bulletin:%@", bulletinID]];
-    }
-
-    NSString *recordID = NFNormalizedStringValue(record.recordID);
-    if (recordID.length > 0) {
-        [keys addObject:[NSString stringWithFormat:@"record:%@", recordID]];
-    }
-
-    NSString *publisherBulletinID = NFNormalizedStringValue(record.publisherBulletinID);
-    if (publisherBulletinID.length > 0) {
-        [keys addObject:[NSString stringWithFormat:@"publisher:%@", publisherBulletinID]];
-    }
-
-    return keys;
-}
-
-static void NFPurgeExpiredBlockedIdentityEntriesLocked(NSTimeInterval now) {
-    NSTimeInterval ttl = NFBlockedIdentityTTL();
-    NSMutableArray<NSString *> *expiredKeys = [NSMutableArray array];
-
-    [NFBlockedIdentityCache enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSDictionary *entry, BOOL *stop) {
-        NSNumber *timestamp = [entry[@"timestamp"] respondsToSelector:@selector(doubleValue)] ? entry[@"timestamp"] : nil;
-        if (!timestamp || (now - timestamp.doubleValue) > ttl) {
-            [expiredKeys addObject:key];
-        }
-    }];
-
-    if (expiredKeys.count > 0) {
-        [NFBlockedIdentityCache removeObjectsForKeys:expiredKeys];
-    }
-}
-
 static void NFClearTransientBlockedCaches(void) {
     if (NFBlockedActionQueue) {
         dispatch_sync(NFBlockedActionQueue, ^{
