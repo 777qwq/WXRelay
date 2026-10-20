@@ -1,15 +1,15 @@
 "ROOT_TITLE" = "WXRelay NF";
-"ROOT_TOGGLE_FOOTER" = "打开后：命中下面规则的通知，原文会立刻转发给目标 id；原通知照常显示。\n微信消息的标题=发送者昵称或群名，正文=消息内容，按需选作用域。";
+"ROOT_TOGGLE_FOOTER" = "总开关：打开后，命中所配目标关键词的通知，原文立即转发给对应目标 id；原通知照常显示。";
 
 "RULES_LINK_CONTAINS" = "包含规则";
 "RULES_LINK_EXCLUDE" = "排除规则";
 "RULES_LINK_REGEX" = "正则规则";
 "ROOT_WECHAT_TARGETS" = "转发目标";
-"ROOT_TARGETS_FOOTER" = "每个目标独立生效：命中它的包含关键词就转给它；命中它的排除关键词不转；包含留空 = 全部转给它（排除仍生效）。多个目标各自判断，互不影响。";
+"ROOT_TARGETS_FOOTER" = "每个目标独立生效：命中它的包含关键词就转给它；命中它的排除关键词不转；包含留空 = 全部转给它（排除仍生效）。多目标各自判断，互不影响。";
 "ROOT_KEEPALIVE" = "微信后台保活";
 "ROOT_KEEPALIVE_FOOTER" = "微信后台保持常驻（静音保活），关闭后微信被系统回收时转发会延迟到下次打开微信。";
 "ROOT_LOGGING" = "记录转发";
-"ROOT_LOGGING_FOOTER" = "开启后每次转发都会写入记录，可在下方查看明细。";
+"ROOT_LOGGING_FOOTER" = "开启后每次转发都会写入记录，可在下方「已转发通知」查看明细。";
 "TARGETS_TITLE" = "转发目标";
 "TARGET_ADD_TITLE" = "新建目标";
 "TARGET_EDIT_TITLE" = "编辑目标";
