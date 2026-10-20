@@ -114,7 +114,8 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     for (NSDictionary *target in targets) {
         if (![target isKindOfClass:[NSDictionary class]]) continue;
         NSString *tid = [target[@"id"] isKindOfClass:[NSString class]] ? target[@"id"] : @"";
-        if (tid.length && NFWeChatTargetMatches(target, record)) [hitTargets addObject:tid];
+        BOOL enabled = target[@"enabled"] == nil ? YES : [target[@"enabled"] boolValue];
+        if (tid.length && enabled && NFWeChatTargetMatches(target, record)) [hitTargets addObject:tid];
     }
     if (hitTargets.count == 0) return;
     @autoreleasepool {

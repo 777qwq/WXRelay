@@ -14,7 +14,9 @@
 "TARGET_ADD_TITLE" = "新建目标";
 "TARGET_EDIT_TITLE" = "编辑目标";
 "TARGETS_ROW_SUMMARY" = "包含 %lu · 排除 %lu";
+"TARGETS_ROW_DISABLED" = "已停用";
 "TARGETS_FOOTER" = "右上角 + 新建目标。每个目标 = 接收 id + 自己的包含/排除关键词。";
+"TARGET_SECTION_ENABLED" = "启用该目标";
 "TARGET_SECTION_ID" = "接收 id";
 "TARGET_SECTION_CONTAINS" = "包含关键词";
 "TARGET_SECTION_EXCLUDE" = "排除关键词";

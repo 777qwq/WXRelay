@@ -4,11 +4,12 @@
 #import "NFPRulesListEditorController.h"
 #import "../Shared/NFPreferences.h"
 
-typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
+typedef NS_ENUM(NSInteger, WPRow) { WPRowEnabled = 0, WPRowID, WPRowContains, WPRowExclude };
 
 @interface NFPWeChatTargetEditorController ()
 @property (nonatomic, copy) NSDictionary *target;
 @property (nonatomic, copy) NSString *targetId;
+@property (nonatomic, assign) BOOL enabledTarget;
 @property (nonatomic, copy) NSArray *containsRules;
 @property (nonatomic, copy) NSArray *excludeRules;
 @property (nonatomic, copy) void (^saveHandler)(NSDictionary *target);
@@ -21,6 +22,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) {
         _target = target ?: @{};
         _targetId = [_target[@"id"] isKindOfClass:[NSString class]] ? _target[@"id"] : @"";
+        _enabledTarget = _target[@"enabled"] == nil ? YES : [_target[@"enabled"] boolValue];
         _containsRules = [_target[@"contains"] isKindOfClass:[NSArray class]] ? _target[@"contains"] : @[];
         _excludeRules = [_target[@"exclude"] isKindOfClass:[NSArray class]] ? _target[@"exclude"] : @[];
         _saveHandler = saveHandler;
@@ -35,11 +37,12 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     if (@available(iOS 15.0, *)) { self.tableView.sectionHeaderTopPadding = 0; }
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return 1; }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    if (section == WPRowEnabled) return NFPLocalizedString(@"TARGET_SECTION_ENABLED");
     if (section == WPRowID) return NFPLocalizedString(@"TARGET_SECTION_ID");
     if (section == WPRowContains) return NFPLocalizedString(@"TARGET_SECTION_CONTAINS");
     return NFPLocalizedString(@"TARGET_SECTION_EXCLUDE");
@@ -57,7 +60,13 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     cell.textLabel.text = nil;
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.detailTextLabel.text = nil;
-    if (indexPath.section == WPRowID) {
+    if (indexPath.section == WPRowEnabled) {
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        UISwitch *sw = [[UISwitch alloc] init];
+        sw.on = self.enabledTarget;
+        [sw addTarget:self action:@selector(enabledChanged:) forControlEvents:UIControlEventValueChanged];
+        cell.accessoryView = sw;
+    } else if (indexPath.section == WPRowID) {
         cell.accessoryType = UITableViewCellAccessoryNone;
         UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 320, 36)];
         field.placeholder = NFPLocalizedString(@"TARGET_ID_PLACEHOLDER");
@@ -80,6 +89,8 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
 }
 
 - (void)idChanged:(UITextField *)f { self.targetId = f.text ?: @""; }
+
+- (void)enabledChanged:(UISwitch *)sw { self.enabledTarget = sw.on; }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -107,7 +118,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
         [self presentViewController:a animated:YES completion:nil];
         return;
     }
-    self.saveHandler(@{ @"id": tid, @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[] });
+    self.saveHandler(@{ @"id": tid, @"enabled": @(self.enabledTarget), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[] });
     [self.navigationController popViewControllerAnimated:YES];
 }
 

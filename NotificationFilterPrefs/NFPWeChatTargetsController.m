@@ -73,7 +73,10 @@
     cell.textLabel.text = t[@"id"];
     NSUInteger contains = [t[@"contains"] isKindOfClass:[NSArray class]] ? [t[@"contains"] count] : 0;
     NSUInteger exclude = [t[@"exclude"] isKindOfClass:[NSArray class]] ? [t[@"exclude"] count] : 0;
-    cell.detailTextLabel.text = [NSString stringWithFormat:NFPLocalizedString(@"TARGETS_ROW_SUMMARY"), contains, exclude];
+    BOOL enabled = t[@"enabled"] == nil ? YES : [t[@"enabled"] boolValue];
+    cell.detailTextLabel.text = enabled
+        ? [NSString stringWithFormat:NFPLocalizedString(@"TARGETS_ROW_SUMMARY"), contains, exclude]
+        : NFPLocalizedString(@"TARGETS_ROW_DISABLED");
     return cell;
 }
 
