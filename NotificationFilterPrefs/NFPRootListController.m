@@ -83,6 +83,29 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [self openTargetEditorWithIndex:index];
 }
 
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
+    PSSpecifier *sp = [self specifierAtIndexPath:indexPath];
+    NSString *ident = sp ? ([sp propertyForKey:PSIDKey] ?: @"") : @"";
+    return [ident hasPrefix:@"target-"];
+}
+
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (editingStyle != UITableViewCellEditingStyleDelete) return;
+    PSSpecifier *sp = [self specifierAtIndexPath:indexPath];
+    NSString *ident = sp ? ([sp propertyForKey:PSIDKey] ?: @"") : @"";
+    if (![ident hasPrefix:@"target-"]) return;
+    NSInteger index = [ident componentsSeparatedByString:@"-"].lastObject.integerValue;
+    NSMutableArray *list = [NSMutableArray arrayWithArray:[self targetListFromPrefs]];
+    if (index < 0 || index >= (NSInteger)list.count) return;
+    [list removeObjectAtIndex:index];
+    NSMutableDictionary *preferences = [NFPreferences loadMutablePreferences];
+    preferences[NFWeChatTargetsListKey] = list;
+    NSError *error = nil;
+    if (![NFPreferences savePreferences:preferences error:&error]) { return; }
+    [NFPreferences postPreferencesChangedNotification];
+    [self reloadSpecifiers];
+}
+
 - (void)targetSwitchChanged:(UISwitch *)sw {
     NSInteger index = (NSInteger)sw.tag;
     NSArray *list = [self targetListFromPrefs];
@@ -131,18 +154,18 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [enabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
     [specifiers addObject:enabledSpecifier];
 
-    PSSpecifier *targetsHeader = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_TARGETS_TITLE")
-                                                                 target:self
-                                                                    set:nil
-                                                                    get:nil
-                                                                 detail:nil
-                                                                   cell:PSGroupCell
-                                                                   edit:nil];
-    [specifiers addObject:targetsHeader];
-
     PSSpecifier *targetsGroup = [PSSpecifier emptyGroupSpecifier];
     [targetsGroup setProperty:NFPLocalizedString(@"ROOT_TARGETS_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:targetsGroup];
+
+    PSSpecifier *targetsTitle = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_TARGETS_TITLE")
+                                                                target:self
+                                                                   set:nil
+                                                                   get:nil
+                                                                detail:nil
+                                                                  cell:PSSubtitleCell
+                                                                  edit:nil];
+    [specifiers addObject:targetsTitle];
 
     NSDictionary *prefs = [NFPreferences loadPreferences];
     NSArray *targetList = prefs[NFWeChatTargetsListKey];

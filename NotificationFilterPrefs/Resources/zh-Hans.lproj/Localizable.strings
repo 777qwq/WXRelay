@@ -33,6 +33,11 @@
 
 "ROOT_FORWARDED_LOGS" = "已转发通知";
 "ROOT_TARGETS_TITLE" = "转发目标";
+"TARGET_JUDGE_FOOTER" = "判定规则：
+1. 排除关键词命中 → 不转发（一票否决，最优先）
+2. 包含关键词命中 → 转发
+3. 包含关键词没命中 → 不转发
+4. 包含关键词留空 → 全部转发（仅排除规则生效）";
 "ROOT_ENABLE_FILTER" = "全局开关";
 "ROOT_DELETE_FILTERED" = "从通知中心删除匹配通知";
 "ROOT_DELETE_FOOTER" = "开启后，已匹配通知会从通知中心移除；未开启时，禁用插件后，历史匹配通知会在通知中心恢复显示。";

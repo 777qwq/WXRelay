@@ -79,6 +79,8 @@ static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NFNotification
     if (![entries isKindOfClass:[NSArray class]]) return NO;
     for (NSDictionary *entry in entries) {
         if (![entry isKindOfClass:[NSDictionary class]]) continue;
+        NSString *enabledVal = entry[@"Enabled"] ?: entry[@"enabled"];
+        if (enabledVal != nil && ![enabledVal boolValue]) continue; // 未启用规则视为留空
         NSString *ruleText = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"text"] isKindOfClass:[NSString class]] ? entry[@"text"] : @"") : (NSString *)entry;
         NSString *entryScope = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"scope"] isKindOfClass:[NSString class]] ? entry[@"scope"] : @"") : @"";
         NSString *haystack = NFTextForScope(entryScope.length ? entryScope : scope, record);

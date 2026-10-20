@@ -132,8 +132,7 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
-    return [NSString stringWithFormat:@"%@\n\n判定顺序：\n1. 排除关键词命中 → 不转发（一票否决，最优先）\n2. 包含关键词命中 → 转发\n3. 包含关键词没命中 → 不转发\n4. 包含关键词留空 → 全部转发（仅排除规则生效）",
-        NFPLocalizedRulesListFooterForMode(self.editorKind, self.ruleMode)];
+    return NFPLocalizedRulesListFooterForMode(self.editorKind, self.ruleMode);
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
