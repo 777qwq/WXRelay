@@ -75,7 +75,7 @@ static NSString *NFTextForScope(NSString *scope, NFNotificationRecord *record) {
     return record.joinedText ?: @"";
 }
 
-static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NSString *text) {
+static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NFNotificationRecord *record) {
     if (![entries isKindOfClass:[NSArray class]]) return NO;
     for (NSDictionary *entry in entries) {
         if (![entry isKindOfClass:[NSDictionary class]]) continue;
@@ -92,10 +92,14 @@ static BOOL NFWeChatTargetMatches(NSDictionary *target, NFNotificationRecord *re
     NSString *defaultScope = NFRuleScopeMessage;
     NSArray *exclude = target[@"exclude"];
     if ([exclude isKindOfClass:[NSArray class]] && exclude.count > 0 &&
-        NFEntryListMatches(exclude, defaultScope, nil)) return NO;
+        NFEntryListMatches(exclude, defaultScope, record)) return NO;
     NSArray *contains = target[@"contains"];
     if (![contains isKindOfClass:[NSArray class]] || contains.count == 0) return YES;
-    return NFEntryListMatches(contains, defaultScope, nil);
+    return NFEntryListMatches(contains, defaultScope, record);
+}
+
+static BOOL NFShouldForwardToWeChat(void) {
+    return [NFCopyPreferencesSnapshot()[NFEnabledKey] boolValue];
 }
 
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
