@@ -154,15 +154,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 // leaves the row without a summary (import/export).
 - (id)readLinkSummary:(PSSpecifier *)specifier {
     NSString *identifier = [specifier propertyForKey:PSIDKey];
-    if ([identifier isEqualToString:@"rules-contains"]) {
-        return [self ruleCountSummary:NFPRuleEditorKindContains];
-    }
-    if ([identifier isEqualToString:@"rules-exclude"]) {
-        return [self ruleCountSummary:NFPRuleEditorKindExclude];
-    }
-    if ([identifier isEqualToString:@"rules-regex"]) {
-        return [self ruleCountSummary:NFPRuleEditorKindRegex];
-    }
     if ([identifier isEqualToString:NFPAppRulesSpecifierID]) {
         return [self appRulesSummary];
     }
