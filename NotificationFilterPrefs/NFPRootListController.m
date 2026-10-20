@@ -229,7 +229,8 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
         cell.detailTextLabel.text = summary;
     }
     // 目标行：右侧挂独立开关
-    NSString *cellIdentifier = [specifier propertyForKey:PSIDKey] ?: @"";
+    PSSpecifier *rowSpecifier = [self specifierAtIndexPath:indexPath];
+    NSString *cellIdentifier = rowSpecifier ? ([rowSpecifier propertyForKey:PSIDKey] ?: @"") : @"";
     if ([cellIdentifier hasPrefix:@"target-"]) {
         NSInteger index = [cellIdentifier componentsSeparatedByString:@"-"].lastObject.integerValue;
         NSArray *list = [self targetListFromPrefs];
