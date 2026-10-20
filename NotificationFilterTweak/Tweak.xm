@@ -726,63 +726,6 @@ static NFMatchResult *NFEvaluateRecord(NFNotificationRecord *record) {
     return result;
 }
 
-static void NFBackfillRecordSectionIdentifier(NFNotificationRecord *record, id sectionIdentifier) {
-    NSString *resolvedSectionIdentifier = NFNormalizedStringValue(sectionIdentifier);
-    if (resolvedSectionIdentifier.length == 0) {
-        return;
-    }
-
-    if (record.bundleIdentifier.length == 0) {
-        record.bundleIdentifier = resolvedSectionIdentifier;
-    }
-    if (record.sectionID.length == 0) {
-        record.sectionID = resolvedSectionIdentifier;
-    }
-}
-
-static NSUInteger NFNotificationRecordSignalScore(NFNotificationRecord *record) {
-    if (!record) {
-        return 0;
-    }
-
-    NSUInteger score = 0;
-    if (record.bundleIdentifier.length > 0) {
-        score += 1;
-    }
-    if (record.sectionID.length > 0) {
-        score += 1;
-    }
-    if (record.bulletinID.length > 0) {
-        score += 1;
-    }
-    if (record.recordID.length > 0) {
-        score += 1;
-    }
-    if (record.publisherBulletinID.length > 0) {
-        score += 1;
-    }
-    if (record.title.length > 0) {
-        score += 2;
-    }
-    if (record.subtitle.length > 0) {
-        score += 1;
-    }
-    if (record.header.length > 0) {
-        score += 1;
-    }
-    if (record.body.length > 0) {
-        score += 2;
-    }
-    if (record.message.length > 0) {
-        score += 2;
-    }
-    if (record.joinedText.length > 0) {
-        score += 3;
-    }
-
-    return score;
-}
-
 static dispatch_queue_t NFBBServerQueue(void) {
     static dispatch_queue_t cachedQueue = NULL;
     static dispatch_once_t onceToken;
