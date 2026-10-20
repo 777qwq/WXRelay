@@ -101,19 +101,8 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 
     // WXRelayNF：转发目标区块
     PSSpecifier *fwdGroup = [PSSpecifier emptyGroupSpecifier];
-    [fwdGroup setProperty:@"开启后，命中规则的微信消息/通知原文转发给目标 id（多个用逗号分隔）。保存即写入配置并即时生效，无需重启。" forKey:PSFooterTextGroupKey];
+    [fwdGroup setProperty:@"开启「启用转发」后，命中规则的微信消息/通知原文转发给目标 id（多个用逗号分隔）。排除规则命中则不转发。保存即时生效。" forKey:PSFooterTextGroupKey];
     [specifiers addObject:fwdGroup];
-
-    PSSpecifier *fwdToggle = [PSSpecifier preferenceSpecifierNamed:@"启用转发"
-                                                              target:self
-                                                                 set:@selector(setPreferenceValue:specifier:)
-                                                                 get:@selector(readPreferenceValue:)
-                                                              detail:nil
-                                                                 cell:PSSwitchCell
-                                                                 edit:nil];
-    [fwdToggle setProperty:NFWeChatForwardKey forKey:PSKeyNameKey];
-    [fwdToggle setProperty:@NO forKey:PSDefaultValueKey];
-    [specifiers addObject:fwdToggle];
 
     PSSpecifier *fwdTargets = [PSSpecifier preferenceSpecifierNamed:@"转发目标 wxid"
                                                               target:self
@@ -149,12 +138,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_GLOBAL_RULES")
                                                action:@selector(openGlobalRules:)
                                            identifier:NFPGlobalRulesSpecifierID]];
-    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_APP_RULES")
-                                               action:@selector(openAppRules:)
-                                           identifier:NFPAppRulesSpecifierID]];
-    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_IMPORT_EXPORT")
-                                               action:@selector(openImportExport:)
-                                           identifier:NFPImportExportSpecifierID]];
     [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_FILTERED_LOGS")
                                                action:@selector(openLogs:)
                                            identifier:NFPFilteredLogsSpecifierID]];
