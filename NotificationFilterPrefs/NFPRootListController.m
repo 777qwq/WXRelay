@@ -31,11 +31,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self reloadSpecifiers];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addTargetTapped:)];
-}
-
-- (void)addTargetTapped:(id)sender {
-    [self openTargetEditorWithIndex:-1];
 }
 
 - (NSString *)globalRulesSummary {
@@ -165,6 +160,9 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
                                                                 detail:nil
                                                                   cell:PSLinkCell
                                                                   edit:nil];
+    targetsTitle->action = @selector(addTargetTapped:);
+    [targetsTitle setProperty:@"addTargetTapped:" forKey:PSActionKey];
+    [targetsTitle setProperty:@"targets-title" forKey:PSIDKey];
     [specifiers addObject:targetsTitle];
 
     NSDictionary *prefs = [NFPreferences loadPreferences];
@@ -257,6 +255,12 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     // Belt and braces: some PSTableCell styles ignore the getter, so write the
     // summary straight onto the cell's value label when one exists.
     NSString *summary = [self readLinkSummary:[self specifierAtIndexPath:indexPath]];
+    if ([cellIdentifier isEqualToString:@"targets-title"]) {
+        cell.textLabel.textColor = [UIColor labelColor];
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.detailTextLabel.text = nil;
+        return cell;
+    }
     if (summary.length > 0 && cell.detailTextLabel != nil) {
         cell.detailTextLabel.text = summary;
     }

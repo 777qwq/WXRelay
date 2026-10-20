@@ -51,7 +51,9 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == WPRowID) return NFPLocalizedString(@"TARGET_ID_FOOTER");
     if (section == WPRowContains) return NFPLocalizedString(@"TARGET_CONTAINS_FOOTER");
-    if (section == WPRowExclude) return NFPLocalizedString(@"TARGET_EXCLUDE_FOOTER");
+    if (section == WPRowExclude) {
+        return [NSString stringWithFormat:@"%@\n\n%@", NFPLocalizedString(@"TARGET_EXCLUDE_FOOTER"), NFPLocalizedString(@"TARGET_JUDGE_FOOTER")];
+    }
     return NFPLocalizedString(@"TARGET_JUDGE_FOOTER");
 }
 
