@@ -2,7 +2,7 @@ Package: com.777qwq.wxrelaynf
 Name: WXRelay NF 通知转发
 Depends: mobilesubstrate, preferenceloader
 Architecture: iphoneos-arm
-Description: 微信通知按目标转发。每个目标=接收id+独立开关+包含/排除关键词（可分作用域），命中即转发原文，通知照常显示。设置-WXRelay NF 内配置，保存即时生效。Author 见上。
+Description: 微信通知按目标转发：每个目标=接收id+开关+关键词，命中即转发原文。设置-WXRelay NF 配置，即时生效。
 Maintainer: Tune
 Author: 777qwq
 Section: Tweaks
