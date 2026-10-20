@@ -4,7 +4,6 @@
 #import "../Shared/NFLogStore.h"
 #import "NFPLocalization.h"
 #import "NFPRulesListEditorController.h"
-#import "NFPWeChatTargetsController.h"
 #import "NFPAppRulesListController.h"
 #import "NFPImportExportController.h"
 #import "NFPLogsListController.h"
@@ -31,6 +30,11 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self reloadSpecifiers];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addTargetTapped:)];
+}
+
+- (void)addTargetTapped:(id)sender {
+    [self openTargetEditorWithIndex:-1];
 }
 
 - (NSString *)globalRulesSummary {
@@ -48,15 +52,55 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
                                       (unsigned long)[NFPreferences enabledAppRulesCountFromPreferences:preferences]];
 }
 
+- (NSArray<NSDictionary *> *)targetListFromPrefs {
+    NSDictionary *prefs = [NFPreferences loadPreferences];
+    NSArray *list = prefs[NFWeChatTargetsListKey];
+    return [list isKindOfClass:[NSArray class]] ? list : @[];
+}
+
+- (void)openTargetEditorWithIndex:(NSInteger)index {
+    NSArray *list = [self targetListFromPrefs];
+    NSDictionary *target = (index >= 0 && index < (NSInteger)list.count) ? list[index] : nil;
+    __weak typeof(self) weakSelf = self;
+    NFPWeChatTargetEditorController *editor = [[NFPWeChatTargetEditorController alloc] initWithTarget:target saveHandler:^(NSDictionary *saved) {
+        NSMutableArray *updated = [NSMutableArray arrayWithArray:[weakSelf targetListFromPrefs]];
+        if (index >= 0 && index < (NSInteger)updated.count) updated[index] = saved;
+        else [updated addObject:saved];
+        NSMutableDictionary *preferences = [NFPreferences loadMutablePreferences];
+        preferences[NFWeChatTargetsListKey] = updated;
+        NSError *error = nil;
+        if (![NFPreferences savePreferences:preferences error:&error]) { return; }
+        [NFPreferences postPreferencesChangedNotification];
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf reloadSpecifiers]; });
+    }];
+    [self.navigationController pushViewController:editor animated:YES];
+}
+
+- (void)openTargetEditor:(PSSpecifier *)specifier {
+    NSString *identifier = [specifier propertyForKey:PSIDKey];
+    NSInteger index = [identifier componentsSeparatedByString:@"-"].lastObject.integerValue;
+    [self openTargetEditorWithIndex:index];
+}
+
+- (void)targetSwitchChanged:(UISwitch *)sw {
+    NSInteger index = (NSInteger)sw.tag;
+    NSArray *list = [self targetListFromPrefs];
+    if (index < 0 || index >= (NSInteger)list.count) return;
+    NSMutableDictionary *t = [NSMutableDictionary dictionaryWithDictionary:list[index]];
+    t[@"enabled"] = @(sw.on);
+    NSMutableArray *updated = [NSMutableArray arrayWithArray:list];
+    updated[index] = t;
+    NSMutableDictionary *preferences = [NFPreferences loadMutablePreferences];
+    preferences[NFWeChatTargetsListKey] = updated;
+    NSError *error = nil;
+    if (![NFPreferences savePreferences:preferences error:&error]) { return; }
+    [NFPreferences postPreferencesChangedNotification];
+}
+
 - (NSString *)wechatTargetsSummary {
     NSDictionary *prefs = [NFPreferences loadPreferences];
     NSArray *list = prefs[NFWeChatTargetsListKey];
     return [NSString stringWithFormat:@"%lu 个目标", (unsigned long)([list isKindOfClass:[NSArray class]] ? list.count : 0)];
-}
-
-- (void)openWeChatTargets:(PSSpecifier *)specifier {
-    NFPWeChatTargetsController *controller = [[NFPWeChatTargetsController alloc] init];
-    [self.navigationController pushViewController:controller animated:YES];
 }
 
 - (NSString *)filteredLogsSummary {
@@ -75,14 +119,33 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     [toggleGroup setProperty:NFPLocalizedString(@"ROOT_TOGGLE_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:toggleGroup];
 
+    PSSpecifier *enabledSpecifier = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_ENABLE_FILTER")
+                                                                   target:self
+                                                                      set:@selector(setPreferenceValue:specifier:)
+                                                                      get:@selector(readPreferenceValue:)
+                                                                   detail:nil
+                                                                     cell:PSSwitchCell
+                                                                     edit:nil];
+    [enabledSpecifier setProperty:NFEnabledKey forKey:PSKeyNameKey];
+    [enabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
+    [specifiers addObject:enabledSpecifier];
 
     PSSpecifier *targetsGroup = [PSSpecifier emptyGroupSpecifier];
     [targetsGroup setProperty:NFPLocalizedString(@"ROOT_TARGETS_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:targetsGroup];
 
-    [specifiers addObject:[self linkSpecifierWithName:NFPLocalizedString(@"ROOT_WECHAT_TARGETS")
-                                               action:@selector(openWeChatTargets:)
-                                           identifier:NFPWeChatTargetsSpecifierID]];
+    NSDictionary *prefs = [NFPreferences loadPreferences];
+    NSArray *targetList = prefs[NFWeChatTargetsListKey];
+    if ([targetList isKindOfClass:[NSArray class]]) {
+        [targetList enumerateObjectsUsingBlock:^(NSDictionary *t, NSUInteger idx, BOOL *stop) {
+            NSString *tid = [t[@"id"] isKindOfClass:[NSString class]] ? t[@"id"] : @"";
+            NSString *identifier = [NSString stringWithFormat:@"target-%lu", (unsigned long)idx];
+            PSSpecifier *row = [self linkSpecifierWithName:(tid.length ? tid : @"(未命名)")
+                                                     action:@selector(openTargetEditor:)
+                                                 identifier:identifier];
+            [specifiers addObject:row];
+        }];
+    }
 
     PSSpecifier *kaGroup = [PSSpecifier emptyGroupSpecifier];
     [kaGroup setProperty:NFPLocalizedString(@"ROOT_KEEPALIVE_FOOTER") forKey:PSFooterTextGroupKey];
@@ -121,6 +184,7 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     _specifiers = [specifiers copy];
     return _specifiers;
 }
+
 
 - (PSSpecifier *)linkSpecifierWithName:(NSString *)name
                                 action:(SEL)action
@@ -162,6 +226,23 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
     NSString *summary = [self readLinkSummary:[self specifierAtIndexPath:indexPath]];
     if (summary.length > 0 && cell.detailTextLabel != nil) {
         cell.detailTextLabel.text = summary;
+    }
+    // 目标行：右侧挂独立开关
+    NSString *cellIdentifier = [specifier propertyForKey:PSIDKey] ?: @"";
+    if ([cellIdentifier hasPrefix:@"target-"]) {
+        NSInteger index = [cellIdentifier componentsSeparatedByString:@"-"].lastObject.integerValue;
+        NSArray *list = [self targetListFromPrefs];
+        UISwitch *sw = [[UISwitch alloc] init];
+        sw.tag = index;
+        if (index < (NSInteger)list.count) {
+            NSDictionary *t = list[index];
+            sw.on = t[@"enabled"] == nil ? YES : [t[@"enabled"] boolValue];
+        }
+        [sw addTarget:self action:@selector(targetSwitchChanged:) forControlEvents:UIControlEventValueChanged];
+        cell.accessoryView = sw;
+        cell.detailTextLabel.text = nil;
+    } else {
+        cell.accessoryView = nil;
     }
     return cell;
 }

@@ -14,7 +14,6 @@ NotificationFilterPrefs_FILES = \
 	NFPRuleCardCell.m \
 	NFPRuleTextEditorController.m \
 	NFPRulesListEditorController.m \
-	NFPWeChatTargetsController.m \
 	NFPWeChatTargetEditorController.m \
 	NFPNotificationRuleScannerController.m \
 	NFPNotificationRuleTokenBuilder.m \
