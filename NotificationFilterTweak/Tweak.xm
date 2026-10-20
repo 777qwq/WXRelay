@@ -116,9 +116,9 @@ static BOOL NFMarkForwardedIfNew(NSString *key) {
         NSDate *now = [NSDate date];
         NSMutableSet<NSString *> *stale = [NSMutableSet set];
         for (NSString *k in NFForwardedKeys) {
-            // key 格式：<时间戳>|<id 或内容>；带 ID 的永不过期，兜底内容 10 秒过期
+            // key 格式：<时间戳>|<id 或内容>；带 ID 的永不过期，兜底内容 30 秒过期
             NSString *ts = [k componentsSeparatedByString:@"|"].firstObject;
-            if (now.timeIntervalSince1970 - ts.doubleValue > 10) [stale addObject:k];
+            if (now.timeIntervalSince1970 - ts.doubleValue > 30) [stale addObject:k];
         }
         [NFForwardedKeys minusSet:stale];
         if ([NFForwardedKeys containsObject:key]) {
