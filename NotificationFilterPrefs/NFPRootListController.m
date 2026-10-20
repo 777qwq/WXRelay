@@ -4,6 +4,7 @@
 #import "../Shared/NFLogStore.h"
 #import "NFPLocalization.h"
 #import "NFPRulesListEditorController.h"
+#import "NFPWeChatTargetEditorController.h"
 #import "NFPAppRulesListController.h"
 #import "NFPImportExportController.h"
 #import "NFPLogsListController.h"
