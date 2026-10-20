@@ -212,10 +212,6 @@ static NSString *NFNormalizedStringValue(id value) {
     return [stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
-static NSTimeInterval NFBlockedIdentityTTL(void) {
-    return 900.0;
-}
-
 static void NFClearTransientBlockedCaches(void) {
     if (NFBlockedActionQueue) {
         dispatch_sync(NFBlockedActionQueue, ^{
