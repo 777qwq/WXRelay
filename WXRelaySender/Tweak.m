@@ -3,7 +3,7 @@
  *
  * 职责（单一）：
  *   1. 监听 darwin com.mos.wxrelay.task + 启动补发
- *   2. 消费 wxrelay_tasks JSON（targets+text）→ 懒猫链路发送
+ *   2. 消费 wxrelay_tasks JSON（targets+text）→ 进程内私 API 直发（v2.3.0 去懒猫）
  *   3. keepAlive 默认开（wxrelay.cfg keepAlive=0 可关）
  * 匹配逻辑全部在 SB 端（WXRelayNF 主体），本进程不做任何规则判断。
  * 日志：微信沙盒 tmp/wxrelay.log
@@ -29,18 +29,43 @@ static void wrLog(NSString *msg) {
     } @catch (NSException *e) { }
 }
 
+// v2.3.0 直发：进程内私 API，走微信原生发送管线（CMessageMgr AddMsg），不再依赖懒猫 handleOpenURL
+// 参考：DKWechatHelper sendMsg（8.x 实战）+ iWeChat dump 头；真机签名待验证
 static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     @try {
-        id delegate = [UIApplication sharedApplication].delegate;
-        if (!delegate) { wrLog(@"send: app delegate nil"); return NO; }
-        SEL h = NSSelectorFromString(@"application:handleOpenURL:bundleID:annotation:");
-        if (![delegate respondsToSelector:h]) { wrLog(@"send: handleOpenURL not responding"); return NO; }
-        NSString *escaped = [text stringByAddingPercentEncodingWithAllowedCharacters:
-            [NSCharacterSet URLQueryAllowedCharacterSet]];
-        NSURL *url = [NSURL URLWithString:
-            [NSString stringWithFormat:@"weixin://aiwmao/user=%@&msg=%@", targetId, escaped]];
-        if (!url) { wrLog(@"send: bad url"); return NO; }
-        ((BOOL(*)(id,SEL,id,id,id,id))objc_msgSend)(delegate, h, nil, url, nil, nil);
+        Class MMServiceCenter = objc_getClass("MMServiceCenter");
+        Class CMessageMgr = objc_getClass("CMessageMgr");
+        Class CMessageWrap = objc_getClass("CMessageWrap");
+        Class SettingUtil = objc_getClass("SettingUtil");
+        if (!MMServiceCenter || !CMessageMgr || !CMessageWrap || !SettingUtil) {
+            wrLog(@"send: private class missing");
+            return NO;
+        }
+        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id fromUsr = ((id(*)(id,SEL,long long))objc_msgSend)(SettingUtil, @selector(getLocalUsrName:), 0);
+        if (!center || !fromUsr) { wrLog(@"send: center/self missing"); return NO; }
+        if (![center respondsToSelector:@selector(getService:)]) { wrLog(@"send: no getService"); return NO; }
+        id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CMessageMgr);
+        if (!mgr) { wrLog(@"send: no CMessageMgr"); return NO; }
+        if (![(id)CMessageWrap respondsToSelector:@selector(alloc)]) { wrLog(@"send: no wrap alloc"); return NO; }
+        id wrap = ((id(*)(id,SEL))objc_msgSend)((id)CMessageWrap, @selector(alloc));
+        wrap = ((id(*)(id,SEL,long long))objc_msgSend)(wrap, @selector(initWithMsgType:), (long long)1);
+        if (!wrap) { wrLog(@"send: wrap init failed"); return NO; }
+        ((void(*)(id,SEL,id))objc_msgSend)(wrap, @selector(setM_nsFromUsr:), fromUsr);
+        ((void(*)(id,SEL,id))objc_msgSend)(wrap, @selector(setM_nsContent:), text);
+        ((void(*)(id,SEL,id))objc_msgSend)(wrap, @selector(setM_nsToUsr:), targetId);
+        ((void(*)(id,SEL,unsigned int))objc_msgSend)(wrap, @selector(setM_uiMesLocalID:), 11u);
+        ((void(*)(id,SEL,_Bool))objc_msgSend)(wrap, @selector(setM_uiStatus:), YES);
+        // 时间戳：优先 MMNewSessionMgr GenSendMsgTime，失败则用系统时间
+        Class MMNewSessionMgr = objc_getClass("MMNewSessionMgr");
+        unsigned int ctime = (unsigned int)[[NSDate date] timeIntervalSince1970];
+        if (MMNewSessionMgr) {
+            id sm = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), MMNewSessionMgr);
+            if (sm && [sm respondsToSelector:@selector(GenSendMsgTime)])
+                ctime = ((unsigned int(*)(id,SEL))objc_msgSend)(sm, @selector(GenSendMsgTime));
+        }
+        ((void(*)(id,SEL,unsigned int))objc_msgSend)(wrap, @selector(setM_uiCreateTime:), ctime);
+        ((void(*)(id,SEL,id,id))objc_msgSend)(mgr, @selector(AddMsg:MsgWrap:), targetId, wrap);
         wrLog([NSString stringWithFormat:@"send ok -> %@ (len=%lu)", targetId, (unsigned long)text.length]);
         return YES;
     } @catch (NSException *e) {
