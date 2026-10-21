@@ -213,11 +213,56 @@ static BOOL WRKeepAliveEnabled(void) {
     return YES;
 }
 
+// ===== v2.3.3 探针（一次性，验证解析链后删除）=====
+static void WRProbe(void) {
+    @autoreleasepool {
+        wrLog(@"=== PROBE START ===");
+        Class CContactMgr = objc_getClass("CContactMgr");
+        Class MMServiceCenter = objc_getClass("MMServiceCenter");
+        wrLog([NSString stringWithFormat:@"probe cls CContactMgr=%d MMServiceCenter=%d", CContactMgr!=nil, MMServiceCenter!=nil]);
+        if (!CContactMgr || !MMServiceCenter) { wrLog(@"=== PROBE END (no cls) ==="); return; }
+        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
+        wrLog([NSString stringWithFormat:@"probe mgr=%d getByName=%d getList2=%d", mgr!=nil,
+            [mgr respondsToSelector:@selector(getContactByDisplayName:)],
+            [mgr respondsToSelector:@selector(getContactList:contactType:)]]);
+        if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) { wrLog(@"=== PROBE END (no list) ==="); return; }
+        id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
+        wrLog([NSString stringWithFormat:@"probe list=%@ count=%lu", NSStringFromClass([list class]), (unsigned long)([list isKindOfClass:[NSArray class]]?[list count]:0)]);
+        if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END (bad list) ==="); return; }
+        unsigned int shown = 0;
+        for (id c in list) {
+            if (shown >= 5) break;
+            id uid  = [c respondsToSelector:@selector(m_nsUsrName)]  ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsUsrName))  : nil;
+            id nick = [c respondsToSelector:@selector(m_nsNickName)] ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName)) : nil;
+            id rem  = [c respondsToSelector:@selector(m_nsRemark)]   ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark))   : nil;
+            wrLog([NSString stringWithFormat:@"probe c[%u] usr=%@ nick=%@ remark=%@",
+                shown,
+                [uid isKindOfClass:[NSString class]]?uid:@"(nil/type%)",
+                [nick isKindOfClass:[NSString class]]?nick:@"(nil)",
+                [rem isKindOfClass:[NSString class]]?rem:@"(nil)"]);
+            shown++;
+        }
+        // 精准匹配实测：取最后一个配置目标（非标准 id 的那个，如“谢”）
+        id prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.tune.notificationfilter.plist"];
+        wrLog([NSString stringWithFormat:@"probe prefs=%d", prefs!=nil]);
+        wrLog(@"=== PROBE END ===");
+    }
+}
+
+static void WRProbeNotifyCallback(CFNotificationCenterRef __unused c, void __unused *o,
+                                  CFStringRef __unused n, const void __unused *obj, CFDictionaryRef __unused ui) {
+    @autoreleasepool { WRProbe(); }
+}
+
 __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelayNFSender ctor");
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,
+            CFNotificationSuspensionBehaviorDeliverImmediately);
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+            WRProbeNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.probe", NULL,
             CFNotificationSuspensionBehaviorDeliverImmediately);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRFlushTasks(); // 启动补发积压
