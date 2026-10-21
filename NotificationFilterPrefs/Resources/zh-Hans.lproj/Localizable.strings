@@ -294,3 +294,10 @@
 "RULES_LIST_REGEX_ALLOW_PLACEHOLDER" = "输入用于排除的正则表达式，例如：验证码\\d{4,6}";
 
 "RULE_WHITELIST_DEFAULT_TITLE" = "排除默认转发";
+
+"TARGET_SECTION_ACTION" = "转发动作";
+"TARGET_ACTION_RELAY" = "转发原文";
+"TARGET_ACTION_REPLY" = "发预定消息";
+"TARGET_ACTION_BOTH" = "原文+预定";
+"TARGET_ACTION_FOOTER" = "转发原文 = 现有行为；发预定消息 = 命中后发送下方固定文本（原文不出门）；原文+预定 = 两先后各发一条。";
+"TARGET_REPLY_PLACEHOLDER" = "预定消息内容";

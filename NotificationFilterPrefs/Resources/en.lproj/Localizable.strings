@@ -259,3 +259,10 @@
 "TARGET_SECTION_ID" = "Recipient ID";
 "TARGET_ID_PLACEHOLDER" = "wxid_xxx / group@chatroom / filehelper / remark name";
 "TARGET_ID_FOOTER" = "Messages are forwarded to this WeChat ID. Fill in wxid, group id (ending with @chatroom), filehelper, or the contact's remark/nickname (auto-resolved at send time).";
+
+"TARGET_SECTION_ACTION" = "Action";
+"TARGET_ACTION_RELAY" = "Relay";
+"TARGET_ACTION_REPLY" = "Reply";
+"TARGET_ACTION_BOTH" = "Both";
+"TARGET_ACTION_FOOTER" = "Relay = forward original text (default); Reply = send the fixed text below (original stays local); Both = send original first, then the fixed text.";
+"TARGET_REPLY_PLACEHOLDER" = "Preset message content";

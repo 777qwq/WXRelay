@@ -156,15 +156,26 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
     NSString *text = record.joinedText.length > 0 ? record.joinedText : record.messageText;
-    if (text.length == 0) return;
-    NSMutableArray<NSString *> *hitTargets = [NSMutableArray array];
+    // v2.4.0：reply 模式不需要原文，原文为空不再整单拦截
+    NSMutableArray<NSDictionary *> *items = [NSMutableArray array]; // [{id, text}] v2.4.0：按目标动作生成待发文本
     for (NSDictionary *target in targets) {
         if (![target isKindOfClass:[NSDictionary class]]) continue;
         NSString *tid = [target[@"id"] isKindOfClass:[NSString class]] ? target[@"id"] : @"";
         BOOL enabled = target[@"enabled"] == nil ? YES : [target[@"enabled"] boolValue];
-        if (tid.length && enabled && NFWeChatTargetMatches(target, record)) [hitTargets addObject:tid];
+        if (!(tid.length && enabled && NFWeChatTargetMatches(target, record))) continue;
+        // 动作三选一：relay 转发原文（默认）| reply 发预定消息 | both 双发
+        NSString *action = [target[@"action"] isKindOfClass:[NSString class]] ? target[@"action"] : @"relay";
+        NSString *reply = [target[@"reply"] isKindOfClass:[NSString class]] ? target[@"reply"] : @"";
+        if ([action isEqualToString:@"reply"]) {
+            if (reply.length) [items addObject:@{ @"id": tid, @"text": reply }];
+        } else if ([action isEqualToString:@"both"]) {
+            [items addObject:@{ @"id": tid, @"text": text }];
+            if (reply.length) [items addObject:@{ @"id": tid, @"text": reply }];
+        } else {
+            [items addObject:@{ @"id": tid, @"text": text }];
+        }
     }
-    if (hitTargets.count == 0) return;
+    if (items.count == 0) return;
     @autoreleasepool {
         NFMatchResult *logResult = [[NFMatchResult alloc] init];
         logResult.shouldBlock = YES;
@@ -177,7 +188,7 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
         NSString *taskDir = [container stringByAppendingPathComponent:@"tmp/wxrelay_tasks"];
         [[NSFileManager defaultManager] createDirectoryAtPath:taskDir withIntermediateDirectories:YES attributes:nil error:nil];
         NSString *fn = [NSString stringWithFormat:@"task_%@.json", [[NSUUID UUID] UUIDString]];
-        NSDictionary *task = @{ @"targets": hitTargets, @"text": text,
+        NSDictionary *task = @{ @"items": items,
             @"ts": [NSString stringWithFormat:@"%f", [NSDate date].timeIntervalSince1970] };
         NSData *data = [NSJSONSerialization dataWithJSONObject:task options:NSJSONWritingPrettyPrinted error:nil];
         [data writeToFile:[taskDir stringByAppendingPathComponent:fn] atomically:YES];

@@ -4,7 +4,8 @@
 #import "NFPRulesListEditorController.h"
 #import "../Shared/NFPreferences.h"
 
-typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
+typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WPRowAction };
+typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
 
 @interface NFPWeChatTargetEditorController ()
 @property (nonatomic, copy) NSDictionary *target;
@@ -14,6 +15,9 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
 @property (nonatomic, copy) NSArray *excludeRules;
 @property (nonatomic, copy) void (^saveHandler)(NSDictionary *target);
 @property (nonatomic, strong) UITextField *idField;
+@property (nonatomic, copy) NSString *action;
+@property (nonatomic, copy) NSString *replyText;
+@property (nonatomic, strong) UITextField *replyField;
 @end
 
 @implementation NFPWeChatTargetEditorController
@@ -24,6 +28,8 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
         _targetId = [_target[@"id"] isKindOfClass:[NSString class]] ? _target[@"id"] : @"";
         _containsRules = [_target[@"contains"] isKindOfClass:[NSArray class]] ? _target[@"contains"] : @[];
         _excludeRules = [_target[@"exclude"] isKindOfClass:[NSArray class]] ? _target[@"exclude"] : @[];
+        _action = [_target[@"action"] isKindOfClass:[NSString class]] ? _target[@"action"] : @"relay";
+        _replyText = [_target[@"reply"] isKindOfClass:[NSString class]] ? _target[@"reply"] : @"";
         _saveHandler = saveHandler;
     }
     return self;
@@ -38,14 +44,17 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     if (@available(iOS 15.0, *)) { self.tableView.sectionHeaderTopPadding = 0; }
 }
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return 1; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return (section == WPRowAction) ? 2 : 1;
+}
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if (section == WPRowID) return NFPLocalizedString(@"TARGET_SECTION_ID");
     if (section == WPRowContains) return NFPLocalizedString(@"TARGET_SECTION_CONTAINS");
-    return NFPLocalizedString(@"TARGET_SECTION_EXCLUDE");
+    if (section == WPRowExclude) return NFPLocalizedString(@"TARGET_SECTION_EXCLUDE");
+    return NFPLocalizedString(@"TARGET_SECTION_ACTION");
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
@@ -54,11 +63,12 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     if (section == WPRowExclude) {
         return [NSString stringWithFormat:@"%@\n\n%@", NFPLocalizedString(@"TARGET_EXCLUDE_FOOTER"), NFPLocalizedString(@"TARGET_JUDGE_FOOTER")];
     }
+    if (section == WPRowAction) return NFPLocalizedString(@"TARGET_ACTION_FOOTER");
     return NFPLocalizedString(@"TARGET_JUDGE_FOOTER");
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSString *reuse = (indexPath.section == WPRowID) ? @"wrow-id" : @"wrow-link";
+    NSString *reuse = (indexPath.section == WPRowID || (indexPath.section == WPRowAction && indexPath.row == WPSubReplyText)) ? @"wrow-id" : @"wrow-link";
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuse forIndexPath:indexPath];
     cell.textLabel.text = nil;
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
@@ -79,14 +89,43 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
     } else if (indexPath.section == WPRowContains) {
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_CONTAINS");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.containsRules.count];
-    } else {
+    } else if (indexPath.section == WPRowExclude) {
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.excludeRules.count];
+    } else if (indexPath.section == WPRowAction && indexPath.row == WPSubAction) {
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
+        UISegmentedControl *seg = [[UISegmentedControl alloc] initWithItems:@[NFPLocalizedString(@"TARGET_ACTION_RELAY"), NFPLocalizedString(@"TARGET_ACTION_REPLY"), NFPLocalizedString(@"TARGET_ACTION_BOTH")]];
+        seg.selectedSegmentIndex = [self.action isEqualToString:@"reply"] ? 1 : ([self.action isEqualToString:@"both"] ? 2 : 0);
+        seg.tag = WPRowAction;
+        [seg addTarget:self action:@selector(actionChanged:) forControlEvents:UIControlEventValueChanged];
+        [cell.contentView addSubview:seg];
+        seg.frame = CGRectMake(16, 8, 300, 30);
+    } else if (indexPath.section == WPRowAction && indexPath.row == WPSubReplyText) {
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
+        UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 320, 36)];
+        field.placeholder = NFPLocalizedString(@"TARGET_REPLY_PLACEHOLDER");
+        field.text = self.replyText;
+        field.clearButtonMode = UITextFieldViewModeWhileEditing;
+        [field addTarget:self action:@selector(replyChanged:) forControlEvents:UIControlEventEditingChanged];
+        self.replyField = field;
+        [cell.contentView addSubview:field];
+        field.frame = CGRectMake(16, 4, 300, 36);
+        BOOL hideReply = [self.action isEqualToString:@"relay"];
+        cell.hidden = hideReply;
     }
     return cell;
 }
 
 - (void)idChanged:(UITextField *)f { self.targetId = f.text ?: @""; }
+
+- (void)actionChanged:(UISegmentedControl *)seg {
+    self.action = @[@"relay", @"reply", @"both"][seg.selectedSegmentIndex];
+    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:WPRowAction] withRowAnimation:UITableViewRowAnimationNone];
+}
+
+- (void)replyChanged:(UITextField *)f { self.replyText = f.text ?: @""; }
 
 - (void)enabledChanged:(UISwitch *)sw { self.enabledTarget = sw.on; }
 
@@ -116,7 +155,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude };
         [self presentViewController:a animated:YES completion:nil];
         return;
     }
-    self.saveHandler(@{ @"id": tid, @"enabled": (self.target[@"enabled"] == nil ? @YES : self.target[@"enabled"]), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[] });
+    self.saveHandler(@{ @"id": tid, @"enabled": (self.target[@"enabled"] == nil ? @YES : self.target[@"enabled"]), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[], @"action": self.action ?: @"relay", @"reply": self.replyText ?: @"" });
     [self.navigationController popViewControllerAnimated:YES];
 }
 

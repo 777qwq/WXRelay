@@ -131,11 +131,21 @@ static void WRFlushTasks(void) {
             NSDictionary *task = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:p]
                 options:NSJSONReadingAllowFragments error:nil];
             if ([task isKindOfClass:[NSDictionary class]]) {
-                NSString *text = task[@"text"];
-                NSArray *targets = task[@"targets"];
-                if ([text isKindOfClass:[NSString class]] && [targets isKindOfClass:[NSArray class]]) {
-                    for (NSString *target in targets)
-                        if ([target isKindOfClass:[NSString class]]) WRSendMessage(target, text);
+                // v2.4.0 items 格式：[{id, text}]（SB 端按目标动作生成）；兼容旧 targets+text
+                id items = task[@"items"];
+                if ([items isKindOfClass:[NSArray class]] && [(NSArray *)items count] > 0) {
+                    for (NSDictionary *it in items)
+                        if ([it isKindOfClass:[NSDictionary class]]
+                            && [it[@"id"] isKindOfClass:[NSString class]]
+                            && [it[@"text"] isKindOfClass:[NSString class]])
+                            WRSendMessage(it[@"id"], it[@"text"]);
+                } else {
+                    NSString *text = task[@"text"];
+                    NSArray *targets = task[@"targets"];
+                    if ([text isKindOfClass:[NSString class]] && [targets isKindOfClass:[NSArray class]]) {
+                        for (NSString *target in targets)
+                            if ([target isKindOfClass:[NSString class]]) WRSendMessage(target, text);
+                    }
                 }
             }
             [[NSFileManager defaultManager] removeItemAtPath:p error:nil];
