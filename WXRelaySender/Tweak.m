@@ -205,24 +205,21 @@ static BOOL WRKeepAliveEnabled(void) {
 }
 
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
-static void WRDumpIvars(id obj, NSString *tag) {
-    @autoreleasepool {
-        Class cls = object_getClass(obj);
-        for (Class c = cls; c != nil; c = class_getSuperclass(c)) {
-            unsigned int count = 0;
-            Ivar *ivars = class_copyIvarList(c, &count);
-            wrLog([NSString stringWithFormat:@"probe ivars[%@] class=%@ count=%u", tag, NSStringFromClass(c), count]);
-            for (unsigned int i = 0; i < count; i++) {
-                const char *name = ivar_getName(ivars[i]);
-                const char *type = ivar_getTypeEncoding(ivars[i]);
-                if (type[0] != '@') continue; // 只 dump 对象类型
-                id v = object_getIvar(obj, ivars[i]);
-                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0)
-                    wrLog([NSString stringWithFormat:@"probe %s = %@", name, v]);
+static unsigned int WRScanRemarkExact(id list, NSString *target) {
+    unsigned int hits = 0; NSString *firstUsr = nil;
+    for (id c in list) {
+        if (![c respondsToSelector:@selector(m_nsRemark)]) continue;
+        id rem = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark));
+        if ([rem isKindOfClass:[NSString class]] && [(NSString *)rem isEqualToString:target]) {
+            hits++;
+            if (!firstUsr && [c respondsToSelector:@selector(m_nsUsrName)]) {
+                id u = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsUsrName));
+                if ([u isKindOfClass:[NSString class]]) firstUsr = u;
             }
-            free(ivars);
         }
     }
+    wrLog([NSString stringWithFormat:@"probe remarkExact '%@' hits=%u first=%@", target, hits, firstUsr ?: @"(none)"]);
+    return hits;
 }
 
 static void WRProbe(void) {
@@ -236,23 +233,24 @@ static void WRProbe(void) {
         if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) { wrLog(@"=== PROBE END ==="); return; }
         id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
         if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END ==="); return; }
-        wrLog([NSString stringWithFormat:@"probe count=%lu", (unsigned long)[list count]]);
-        // 1) 第 1 个联系人全继承链 ivar dump
-        for (id c in list) {
-            WRDumpIvars(c, @"c0");
-            break;
-        }
-        // 2) 昵称含“谢”的第一个联系人全继承链 ivar dump
-        unsigned int xieCount = 0;
-        for (id c in list) {
-            if (![c respondsToSelector:@selector(m_nsNickName)]) continue;
-            id nick = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName));
-            if ([nick isKindOfClass:[NSString class]] && [(NSString *)nick containsString:@"谢"]) {
-                xieCount++;
-                if (xieCount == 1) WRDumpIvars(c, @"xie");
+        wrLog([NSString stringWithFormat:@"probe list count=%lu", (unsigned long)[list count]]);
+        // 1) getContactList 里备注=="谢" 精准命中测试
+        WRScanRemarkExact(list, @"谢");
+        // 2) 全量缓存 m_dicContacts：数量 + 备注=="谢" 精准命中测试
+        if ([mgr respondsToSelector:@selector(m_dicContacts)]) {
+            id dic = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(m_dicContacts));
+            wrLog([NSString stringWithFormat:@"probe dicContacts=%@ count=%lu", NSStringFromClass([dic class]),
+                [dic respondsToSelector:@selector(count)] ? (unsigned long)[dic count] : 0]);
+            if ([dic isKindOfClass:[NSDictionary class]]) {
+                id vals = ((id(*)(id,SEL))objc_msgSend)(dic, @selector(allValues));
+                WRScanRemarkExact(vals, @"谢");
             }
+        } else wrLog(@"probe no m_dicContacts ivar");
+        // 3) getAllContactUserName 数量对照
+        if ([mgr respondsToSelector:@selector(getAllContactUserName)]) {
+            id names = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getAllContactUserName));
+            wrLog([NSString stringWithFormat:@"probe allUsrNames=%lu", (unsigned long)([names isKindOfClass:[NSArray class]]?[names count]:0)]);
         }
-        wrLog([NSString stringWithFormat:@"probe xie matches=%u", xieCount]);
         wrLog(@"=== PROBE END ===");
     }
 }
