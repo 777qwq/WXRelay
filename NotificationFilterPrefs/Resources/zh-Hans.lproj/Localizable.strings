@@ -299,9 +299,10 @@
 
 "TARGET_ROW_EDIT_RULES" = "编辑转发规则";
 "TARGET_SECTION_APPS" = "来源 App 白名单";
-"TARGET_APPS_PLACEHOLDER" = "留空=全部 App";
-"TARGET_APPS_FOOTER" = "只转发来源匹配的通知。填 App 包名片段，逗号或空格分隔，包含匹配即命中。例：mobilesms tencent.xin。";
+"TARGET_APPS_PLACEHOLDER" = "点击选择 App";
+"TARGET_APPS_FOOTER" = "只转发勾选 App 的通知，不勾=全部。";
 
 "RULES_ROW_RELAY_ONLY" = "仅转发";
 "RULE_TEXT_REPLY_LABEL" = "回复文本（可空 = 只转发原文）";
 "RULE_TEXT_REPLY_PLACEHOLDER" = "支持占位符 {app} {title} {body}";
+"APP_PICKER_TITLE" = "选择来源 App";

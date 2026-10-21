@@ -266,8 +266,9 @@
 "TARGET_RULES_HINT" = "One per line: keyword=reply. Empty reply = relay original only; filled = relay original + send reply. Placeholders: {app} {title} {body}. Leave whole section empty = relay everything.";
 "TARGET_SECTION_APPS" = "Source app whitelist";
 "TARGET_APPS_PLACEHOLDER" = "Empty = all apps";
-"TARGET_APPS_FOOTER" = "Only notifications from matching apps are processed. Comma/space separated bundle-id fragments (contains match). e.g. mobilesms tencent.xin";
+"TARGET_APPS_FOOTER" = "Only notifications from checked apps are relayed. None checked = all apps.";
 
 "RULES_ROW_RELAY_ONLY" = "Relay only";
 "RULE_TEXT_REPLY_LABEL" = "Reply text (empty = relay original only)";
 "RULE_TEXT_REPLY_PLACEHOLDER" = "Placeholders: {app} {title} {body}";
+"APP_PICKER_TITLE" = "Select source apps";

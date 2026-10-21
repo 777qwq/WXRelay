@@ -12,6 +12,10 @@
 @interface NFPRootListController () <UITextViewDelegate>
 @end
 
+@interface NFPRootListController ()
+@property (nonatomic, assign) BOOL needsReloadOnAppear;
+@end
+
 @implementation NFPRootListController
 
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
@@ -30,7 +34,11 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self reloadSpecifiers];
+    // v2.4.6：仅在数据变更后刷新，避免后台切回重建导航栈
+    if (self.needsReloadOnAppear) {
+        self.needsReloadOnAppear = NO;
+        [self reloadSpecifiers];
+    }
 }
 
 - (NSString *)globalRulesSummary {
@@ -67,7 +75,10 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
         NSError *error = nil;
         if (![NFPreferences savePreferences:preferences error:&error]) { return; }
         [NFPreferences postPreferencesChangedNotification];
-        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf reloadSpecifiers]; });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (weakSelf.navigationController.topViewController == weakSelf) [weakSelf reloadSpecifiers];
+            else weakSelf.needsReloadOnAppear = YES;
+        });
     }];
     [self.navigationController pushViewController:editor animated:YES];
 }
