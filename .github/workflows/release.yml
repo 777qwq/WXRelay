@@ -129,10 +129,10 @@ jobs:
       - name: Verify expected release assets
         run: |
           TAG_VERSION="${RELEASE_TAG#v}"
-          test -f "out/WXRelayNF_${TAG_VERSION}_rootful_arm.deb"
-          test -f "out/WXRelayNF_${TAG_VERSION}_rootless_arm64.deb"
-          test -f "out/WXRelayNF_${TAG_VERSION}_roothide_arm64e.deb"
-          ls -l out/WXRelayNF_*
+          test -f "out/WXRelay_${TAG_VERSION}_rootful_arm.deb"
+          test -f "out/WXRelay_${TAG_VERSION}_rootless_arm64.deb"
+          test -f "out/WXRelay_${TAG_VERSION}_roothide_arm64e.deb"
+          ls -l out/WXRelay_*
 
       - name: Generate release notes
         run: |
@@ -156,4 +156,4 @@ jobs:
               --notes-file out/release-notes.md
           fi
 
-          gh release upload "$RELEASE_TAG" out/WXRelayNF_* --clobber
+          gh release upload "$RELEASE_TAG" out/WXRelay_* --clobber
