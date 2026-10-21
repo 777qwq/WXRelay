@@ -245,15 +245,17 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
     if (self.editorKind == NFPRuleEditorKindContains) {
         // v2.4.4 包含规则：带可选回复文本
         NSString *reply = [ruleEntry isKindOfClass:[NSDictionary class]] ? ([ruleEntry[@"reply"] isKindOfClass:[NSString class]] ? ruleEntry[@"reply"] : @"") : @"";
+        NSString *replyOnly = [ruleEntry isKindOfClass:[NSDictionary class]] ? ([ruleEntry[@"replyOnly"] isKindOfClass:[NSString class]] ? ruleEntry[@"replyOnly"] : @"") : @"";
         NFPRuleTextEditorController *controller = [[NFPRuleTextEditorController alloc] initWithTitle:self.title
                                                                                           placeholder:placeholder
                                                                                           initialRule:[NFPreferences ruleTextFromEntry:ruleEntry]
                                                                                          initialScope:[NFPreferences ruleScopeFromEntry:ruleEntry
                                                                                                                         defaultScope:NFPRuleDefaultScopeForEditorKind(self.editorKind)]
                                                                                         initialReply:reply
+                                                                                       initialReplyOnly:replyOnly
                                                                                            editorKind:self.editorKind
-                                                                                          saveHandler:^(NSString *newRule, NSString *scope, NSString *reply) {
-            [weakSelf saveRule:newRule scope:scope reply:reply atIndex:index];
+                                                                                          saveHandler:^(NSString *newRule, NSString *scope, NSString *reply, NSString *replyOnly) {
+            [weakSelf saveRule:newRule scope:scope reply:reply replyOnly:replyOnly atIndex:index];
         }];
         [self.navigationController pushViewController:controller animated:YES];
         return;
@@ -270,12 +272,13 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
     [self.navigationController pushViewController:controller animated:YES];
 }
 
-- (void)saveRule:(NSString *)rule scope:(NSString *)scope reply:(NSString *)reply atIndex:(NSUInteger)index {
+- (void)saveRule:(NSString *)rule scope:(NSString *)scope reply:(NSString *)reply replyOnly:(NSString *)replyOnly atIndex:(NSUInteger)index {
     NSMutableArray<NSDictionary *> *updatedRules = [self.rules mutableCopy];
     if (index == NSNotFound || index >= updatedRules.count) {
         [updatedRules addObject:[NFPreferences ruleEntryWithText:rule enabled:YES identifier:nil scope:scope]];
         NSMutableDictionary *e = [updatedRules.lastObject mutableCopy];
         if (reply.length) e[@"reply"] = reply;
+        if (replyOnly.length) e[@"replyOnly"] = replyOnly;
         updatedRules[updatedRules.count - 1] = e;
     } else {
         NSDictionary *existingEntry = updatedRules[index];
@@ -284,6 +287,7 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
                                                          identifier:existingEntry[NFRuleEntryIdentifierKey]
                                                               scope:scope] mutableCopy];
         if (reply.length) e[@"reply"] = reply; else [e removeObjectForKey:@"reply"];
+        if (replyOnly.length) e[@"replyOnly"] = replyOnly; else [e removeObjectForKey:@"replyOnly"];
         updatedRules[index] = e;
     }
     self.rules = [[NFPreferences normalizedRuleEntriesFromArray:updatedRules

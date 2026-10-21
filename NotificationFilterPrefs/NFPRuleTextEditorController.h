@@ -18,8 +18,9 @@ NS_ASSUME_NONNULL_BEGIN
                   initialRule:(NSString * _Nullable)initialRule
                  initialScope:(NSString *)initialScope
                 initialReply:(NSString * _Nullable)initialReply
+              initialReplyOnly:(NSString * _Nullable)initialReplyOnly
                    editorKind:(NFPRuleEditorKind)editorKind
-                  saveHandler:(void (^)(NSString *rule, NSString *scope, NSString *reply))saveHandler;
+                  saveHandler:(void (^)(NSString *rule, NSString *scope, NSString *reply, NSString *replyOnly))saveHandler;
 
 @end
 

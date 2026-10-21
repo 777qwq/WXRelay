@@ -8,9 +8,11 @@
 @property (nonatomic, copy) NSString *initialRule;
 @property (nonatomic, copy) NSString *initialScope;
 @property (nonatomic, assign) NFPRuleEditorKind editorKind;
-@property (nonatomic, copy) void (^saveHandler)(NSString *rule, NSString *scope, NSString *reply);
+@property (nonatomic, copy) void (^saveHandler)(NSString *rule, NSString *scope, NSString *reply, NSString *replyOnly);
 @property (nonatomic, copy) NSString *initialReply;
+@property (nonatomic, copy) NSString *initialReplyOnly;
 @property (nonatomic, strong) UITextField *replyField;
+@property (nonatomic, strong) UITextField *replyOnlyField;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
 @property (nonatomic, copy) NSString *selectedScopeValue;
@@ -30,7 +32,7 @@
                  initialScope:(NSString *)initialScope
                    editorKind:(NFPRuleEditorKind)editorKind
                   saveHandler:(void (^)(NSString *, NSString *))saveHandler {
-    return [self initWithTitle:title placeholder:placeholder initialRule:initialRule initialScope:initialScope initialReply:nil editorKind:editorKind saveHandler:^(NSString *rule, NSString *scope, NSString *reply) {
+    return [self initWithTitle:title placeholder:placeholder initialRule:initialRule initialScope:initialScope initialReply:nil initialReplyOnly:nil editorKind:editorKind saveHandler:^(NSString *rule, NSString *scope, NSString *reply, NSString *replyOnly) {
         saveHandler(rule, scope);
     }];
 }
@@ -40,8 +42,9 @@
                   initialRule:(NSString *)initialRule
                  initialScope:(NSString *)initialScope
                 initialReply:(NSString *)initialReply
+              initialReplyOnly:(NSString *)initialReplyOnly
                    editorKind:(NFPRuleEditorKind)editorKind
-                  saveHandler:(void (^)(NSString *, NSString *, NSString *))saveHandler {
+                  saveHandler:(void (^)(NSString *, NSString *, NSString *, NSString *))saveHandler {
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         self.title = title;
@@ -51,6 +54,7 @@
         _selectedScopeValue = _initialScope;
         _editorKind = editorKind;
         _initialReply = [initialReply copy] ?: @"";
+        _initialReplyOnly = [initialReplyOnly copy] ?: @"";
         _saveHandler = [saveHandler copy];
     }
     return self;
@@ -132,6 +136,24 @@
     replyContainer.hidden = replyContainerHidden;
     replyContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:replyContainer];
+    UILabel *replyOnlyLabel = [[UILabel alloc] init];
+    replyOnlyLabel.text = NFPLocalizedString(@"RULE_TEXT_REPLY_ONLY_LABEL");
+    replyOnlyLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    replyOnlyLabel.textColor = [UIColor secondaryLabelColor];
+    replyOnlyLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [replyContainer addSubview:replyOnlyLabel];
+    UITextField *replyOnlyField = [[UITextField alloc] init];
+    replyOnlyField.placeholder = NFPLocalizedString(@"RULE_TEXT_REPLY_ONLY_PLACEHOLDER");
+    replyOnlyField.text = self.initialReplyOnly;
+    replyOnlyField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    replyOnlyField.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    replyOnlyField.font = [UIFont systemFontOfSize:16.0];
+    replyOnlyField.layer.cornerRadius = 12.0;
+    replyOnlyField.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+    replyOnlyField.layer.borderColor = [UIColor separatorColor].CGColor;
+    replyOnlyField.translatesAutoresizingMaskIntoConstraints = NO;
+    [replyContainer addSubview:replyOnlyField];
+    self.replyOnlyField = replyOnlyField;
     UILabel *replyLabel = [[UILabel alloc] init];
     replyLabel.text = NFPLocalizedString(@"RULE_TEXT_REPLY_LABEL");
     replyLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
@@ -152,6 +174,14 @@
     [replyContainer addSubview:replyField];
     self.replyField = replyField;
     [NSLayoutConstraint activateConstraints:@[
+        [replyOnlyLabel.topAnchor constraintEqualToAnchor:replyContainer.topAnchor],
+        [replyOnlyLabel.leadingAnchor constraintEqualToAnchor:replyContainer.leadingAnchor],
+        [replyOnlyLabel.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
+        [replyOnlyField.topAnchor constraintEqualToAnchor:replyOnlyLabel.bottomAnchor constant:8.0],
+        [replyOnlyField.leadingAnchor constraintEqualToAnchor:replyContainer.leadingAnchor],
+        [replyOnlyField.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
+        [replyOnlyField.heightAnchor constraintEqualToConstant:44.0],
+        [replyLabel.topAnchor constraintEqualToAnchor:replyOnlyField.bottomAnchor constant:14.0],
         [replyLabel.topAnchor constraintEqualToAnchor:replyContainer.topAnchor],
         [replyLabel.leadingAnchor constraintEqualToAnchor:replyContainer.leadingAnchor],
         [replyLabel.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
@@ -306,7 +336,8 @@
 
     if (self.saveHandler) {
         NSString *reply = [self.replyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        self.saveHandler(normalizedRule, [self selectedScope], reply ?: @"");
+        NSString *replyOnly = [self.replyOnlyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        self.saveHandler(normalizedRule, [self selectedScope], reply ?: @"", replyOnly ?: @"");
     }
 
     [self.navigationController popViewControllerAnimated:YES];

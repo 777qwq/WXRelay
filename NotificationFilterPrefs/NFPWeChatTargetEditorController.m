@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 #import "NFPWeChatTargetEditorController.h"
 #import "NFPLocalization.h"
 #import "NFPRulesListEditorController.h"
@@ -19,6 +20,33 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
 @property (nonatomic, strong) UITextField *idField;
 @property (nonatomic, strong) UITextField *appsField;
 @end
+
+// v2.5.6 pop 探针：记录谁在切后台时弹导航（堆栈暴露来源插件）
+static void NAVInstallPopProbe(void);
+static void NAVInstallPopProbe(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        Class cls = NSClassFromString(@"UINavigationController");
+        SEL sel = @selector(popViewControllerAnimated:);
+        Method m = class_getInstanceMethod(cls, sel);
+        if (!m) return;
+        IMP oldImp = method_getImplementation(m);
+        IMP newImp = imp_implementationWithBlock(^(id selfVC, BOOL animated) {
+            NSMutableArray *frames = [NSMutableArray array];
+            NSArray *syms = [NSThread callStackSymbols];
+            for (NSUInteger i = 2; i < syms.count && i < 8; i++) [frames addObject:syms[i]];
+            NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
+            NSString *line = [NSString stringWithFormat:@"[%@] POP by:\n%@\n", [NSDate date], [frames componentsJoinedByString:@"\n"]];
+            @try {
+                NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+                if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+                if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+            } @catch (NSException *e) { }
+            ((BOOL(*)(id,SEL,BOOL))oldImp)(selfVC, sel, animated);
+        });
+        method_setImplementation(m, newImp);
+    });
+}
 
 static void NAVLog(NSString *msg) {
     @try {
@@ -52,6 +80,7 @@ static void NAVLog(NSString *msg) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    NAVInstallPopProbe();
     self.title = self.targetId.length ? NFPLocalizedString(@"TARGET_EDIT_TITLE") : NFPLocalizedString(@"TARGET_ADD_TITLE");
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_SAVE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow-id"];
@@ -70,7 +99,7 @@ static void NAVLog(NSString *msg) {
     if (section == WPRowID) return NFPLocalizedString(@"TARGET_SECTION_ID");
     if (section == WPRowContains) return NFPLocalizedString(@"TARGET_SECTION_CONTAINS");
     if (section == WPRowExclude) return NFPLocalizedString(@"TARGET_SECTION_EXCLUDE");
-    return NFPLocalizedString(@"TARGET_SECTION_APPS");
+    return @"";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
@@ -120,18 +149,22 @@ static void NAVLog(NSString *msg) {
         cell.detailTextLabel.text = nil;
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     } else if (indexPath.section == WPRowApps && indexPath.row == 1) {
-        // v2.5.4 条形框：已勾选 App 名（白色），点击无动作
+        // v2.5.6 条形框：空内容隐藏整行；App 名默认色
+        NSArray *names = [self displayNamesForAppsList];
+        if (names.count == 0) {
+            cell.hidden = YES;
+            return cell;
+        }
+        cell.hidden = NO;
         cell.accessoryType = UITableViewCellAccessoryNone;
         cell.textLabel.text = nil;
         cell.detailTextLabel.text = nil;
         for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
-        NSArray *names = [self displayNamesForAppsList];
-        NSString *bar = names.count ? [names componentsJoinedByString:@"、"] : NFPLocalizedString(@"TARGET_APPS_BAR_EMPTY");
-        if (names.count > 4) bar = [[names subarrayWithRange:NSMakeRange(0,4)] componentsJoinedByString:@"、"];
+        NSString *bar = names.count > 4 ? [[names subarrayWithRange:NSMakeRange(0,4)] componentsJoinedByString:@"、"] : [names componentsJoinedByString:@"、"];
         UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 30)];
         l.text = bar;
         l.font = [UIFont systemFontOfSize:14.0];
-        l.textColor = [UIColor whiteColor];
+        l.textColor = [UIColor labelColor];
         l.lineBreakMode = NSLineBreakByTruncatingTail;
         [cell.contentView addSubview:l];
         l.frame = CGRectMake(16, 8, 300, 30);

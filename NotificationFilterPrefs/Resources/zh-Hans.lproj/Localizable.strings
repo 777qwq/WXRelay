@@ -305,3 +305,8 @@
 "RULE_TEXT_REPLY_PLACEHOLDER" = "支持占位符 {app} {title} {body}";
 "APP_PICKER_TITLE" = "选择来源 App";
 "TARGET_APPS_BAR_EMPTY" = "点击选择 App";
+
+"RULE_TEXT_REPLY_ONLY_LABEL" = "纯回复文本（不发原文）";
+"RULE_TEXT_REPLY_ONLY_PLACEHOLDER" = "命中后只发这条，不转发原文";
+"RULE_TEXT_REPLY_LABEL" = "转发+回复文本";
+"RULE_TEXT_REPLY_PLACEHOLDER" = "转发原文后追加这条（支持 {app} {title} {body}）";

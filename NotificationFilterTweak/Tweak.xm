@@ -195,8 +195,16 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
             NSString *haystack = NFTextForScope(entryScope.length ? entryScope : NFRuleScopeMessage, record);
             if ([haystack rangeOfString:ruleText].location == NSNotFound) continue;
             anyHit = YES;
-            if (!forwarded && text.length) { [items addObject:@{ @"id": tid, @"text": text }]; forwarded = YES; }
             NSString *reply = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"reply"] isKindOfClass:[NSString class]] ? entry[@"reply"] : @"") : @"";
+            NSString *replyOnly = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"replyOnly"] isKindOfClass:[NSString class]] ? entry[@"replyOnly"] : @"") : @"";
+            BOOL isReplyOnly = [[replyOnly stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0;
+            if (!isReplyOnly && !forwarded && text.length) { [items addObject:@{ @"id": tid, @"text": text }]; forwarded = YES; }
+            // v2.5.6 语义：replyOnly 命中=只发回复不发原文；reply 命中=转发原文后追加
+            if ([[replyOnly stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0) {
+                NSString *expanded = NFExpandReply(replyOnly, record);
+                if (expanded.length) [items addObject:@{ @"id": tid, @"text": expanded }];
+                continue;
+            }
             if ([[reply stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0) {
                 NSString *expanded = NFExpandReply(reply, record);
                 if (expanded.length) [items addObject:@{ @"id": tid, @"text": expanded }];
