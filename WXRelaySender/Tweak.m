@@ -205,73 +205,12 @@ static BOOL WRKeepAliveEnabled(void) {
 }
 
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
-static unsigned int WRScanRemarkExact(id list, NSString *target) {
-    unsigned int hits = 0; NSString *firstUsr = nil;
-    for (id c in list) {
-        if (![c respondsToSelector:@selector(m_nsRemark)]) continue;
-        id rem = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark));
-        if ([rem isKindOfClass:[NSString class]] && [(NSString *)rem isEqualToString:target]) {
-            hits++;
-            if (!firstUsr && [c respondsToSelector:@selector(m_nsUsrName)]) {
-                id u = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsUsrName));
-                if ([u isKindOfClass:[NSString class]]) firstUsr = u;
-            }
-        }
-    }
-    wrLog([NSString stringWithFormat:@"probe remarkExact '%@' hits=%u first=%@", target, hits, firstUsr ?: @"(none)"]);
-    return hits;
-}
-
-static void WRProbe(void) {
-    @autoreleasepool {
-        wrLog(@"=== PROBE START ===");
-        Class CContactMgr = objc_getClass("CContactMgr");
-        Class MMServiceCenter = objc_getClass("MMServiceCenter");
-        if (!CContactMgr || !MMServiceCenter) { wrLog(@"=== PROBE END (no cls) ==="); return; }
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
-        id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
-        if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) { wrLog(@"=== PROBE END ==="); return; }
-        id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
-        if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END ==="); return; }
-        wrLog([NSString stringWithFormat:@"probe list count=%lu", (unsigned long)[list count]]);
-        // 1) getContactList 里备注=="谢" 精准命中测试
-        WRScanRemarkExact(list, @"谢");
-        // 2) 全量缓存 m_dicContacts：数量 + 备注=="谢" 精准命中测试
-        if ([mgr respondsToSelector:@selector(m_dicContacts)]) {
-            id dic = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(m_dicContacts));
-            wrLog([NSString stringWithFormat:@"probe dicContacts=%@ count=%lu", NSStringFromClass([dic class]),
-                [dic respondsToSelector:@selector(count)] ? (unsigned long)[dic count] : 0]);
-            if ([dic isKindOfClass:[NSDictionary class]]) {
-                id vals = ((id(*)(id,SEL))objc_msgSend)(dic, @selector(allValues));
-                WRScanRemarkExact(vals, @"谢");
-            }
-        } else wrLog(@"probe no m_dicContacts ivar");
-        // 3) getAllContactUserName 数量对照
-        if ([mgr respondsToSelector:@selector(getAllContactUserName)]) {
-            id names = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getAllContactUserName));
-            wrLog([NSString stringWithFormat:@"probe allUsrNames=%lu", (unsigned long)([names isKindOfClass:[NSArray class]]?[names count]:0)]);
-        }
-        wrLog(@"=== PROBE END ===");
-    }
-}
-
-static void WRProbeNotifyCallback(CFNotificationCenterRef __unused c, void __unused *o,
-                                  CFStringRef __unused n, const void __unused *obj, CFDictionaryRef __unused ui) {
-    @autoreleasepool { WRProbe(); }
-}
-
 __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelayNFSender ctor");
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,
             CFNotificationSuspensionBehaviorDeliverImmediately);
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
-            WRProbeNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.probe", NULL,
-            CFNotificationSuspensionBehaviorDeliverImmediately);
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(25.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            WRProbe(); // v2.3.3 探针自动跑一次（无 SSH 触发方案）
-        });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRFlushTasks(); // 启动补发积压
             if (WRKeepAliveEnabled()) WRSetupKeepAlive();
