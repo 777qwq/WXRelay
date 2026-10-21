@@ -115,12 +115,12 @@ static void NAVLog(NSString *msg) {
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.excludeRules.count];
     } else if (indexPath.section == WPRowApps && indexPath.row == 0) {
+        // v2.5.4 标题行：点击进 App 选择页
+        cell.textLabel.text = NFPLocalizedString(@"TARGET_SECTION_APPS");
+        cell.detailTextLabel.text = nil;
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-        unsigned long n = self.appsList.count;
-        cell.detailTextLabel.text = n ? [NSString stringWithFormat:@"%lu 个 App", n] : NFPLocalizedString(@"TARGET_APPS_PLACEHOLDER");
-        cell.detailTextLabel.textColor = [UIColor secondaryLabelColor];
     } else if (indexPath.section == WPRowApps && indexPath.row == 1) {
-        // v2.5.1 条形点击框：显示已勾选 App 名，点整条进选择页
+        // v2.5.4 条形框：已勾选 App 名（白色），点击无动作
         cell.accessoryType = UITableViewCellAccessoryNone;
         cell.textLabel.text = nil;
         cell.detailTextLabel.text = nil;
@@ -130,11 +130,11 @@ static void NAVLog(NSString *msg) {
         if (names.count > 4) bar = [[names subarrayWithRange:NSMakeRange(0,4)] componentsJoinedByString:@"、"];
         UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 30)];
         l.text = bar;
-        l.font = [UIFont systemFontOfSize:13.0];
-        l.textColor = [UIColor secondaryLabelColor];
+        l.font = [UIFont systemFontOfSize:14.0];
+        l.textColor = [UIColor whiteColor];
         l.lineBreakMode = NSLineBreakByTruncatingTail;
         [cell.contentView addSubview:l];
-        l.frame = CGRectMake(16, 5, 300, 30);
+        l.frame = CGRectMake(16, 8, 300, 30);
     }
     return cell;
 }
@@ -156,12 +156,13 @@ static void NAVLog(NSString *msg) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == WPRowID) { [self.idField becomeFirstResponder]; return; }
     __weak typeof(self) weakSelf = self;
-    if (indexPath.section == WPRowApps) {
+    if (indexPath.section == WPRowApps && indexPath.row == 0) {
         NFPAppRulesExportPickerController *picker = [[NFPAppRulesExportPickerController alloc] initWithTitle:NFPLocalizedString(@"APP_PICKER_TITLE") selectedBundleIdentifiers:self.appsList selectionHandler:^(NSArray<NSString *> *selected) {
             weakSelf.appsList = selected;
             [weakSelf.tableView reloadData];
         }];
         [self.navigationController pushViewController:picker animated:YES];
+        NAVLog(@"picker pushed (stack+1)");
         return;
     }
         // v2.4.4：包含区 push 规则列表页（含可选回复），不再弹窗

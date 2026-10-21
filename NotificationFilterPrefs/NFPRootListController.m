@@ -35,6 +35,8 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = NFPLocalizedString(@"ROOT_TITLE");
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(navAppBackground) name:UIApplicationWillResignActiveNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(navAppForeground) name:UIApplicationDidBecomeActiveNotification object:nil];
 
 }
 
@@ -54,6 +56,9 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 - (void)dealloc {
     NAVLog(@"root DEALLOC (重建证据)");
 }
+
+- (void)navAppBackground { NAVLog(@"app BACKGROUND while root"); }
+- (void)navAppForeground { NAVLog(@"app FOREGROUND"); }
 
 - (NSString *)globalRulesSummary {
     NSDictionary *preferences = [NFPreferences loadPreferences];

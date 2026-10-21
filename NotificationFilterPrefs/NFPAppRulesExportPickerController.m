@@ -19,6 +19,16 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
 
 @end
 
+static void NAVLog2(NSString *msg) {
+    @try {
+        NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
+        NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+    } @catch (NSException *e) { }
+}
+
 @implementation NFPAppRulesExportPickerController
 
 
@@ -81,6 +91,17 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
     [[NFPAppInfoProvider sharedProvider] refreshApplicationsWithCompletion:^(NSArray *applications) {
         [self reloadApplications];
     }];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(navAppBackground) name:UIApplicationWillResignActiveNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(navAppForeground) name:UIApplicationDidBecomeActiveNotification object:nil];
+}
+
+- (void)navAppBackground { NAVLog2(@"app BACKGROUND while picker"); }
+- (void)navAppForeground { NAVLog2(@"app FOREGROUND"); }
+
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    NSUInteger depth = self.navigationController.viewControllers.count;
+    NAVLog2([NSString stringWithFormat:@"picker disappear stack=%lu", (unsigned long)depth]);
 }
 
 - (void)viewWillAppear:(BOOL)animated {
