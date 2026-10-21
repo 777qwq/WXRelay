@@ -44,7 +44,7 @@ jobs:
 
       - name: Install packaging tools
         run: |
-          brew install bash dpkg ldid ripgrep
+          brew install bash dpkg ldid xz gnu-sed findutils coreutils file ripgrep
           BREW_PREFIX="$(brew --prefix)"
           echo "$BREW_PREFIX/bin" >> "$GITHUB_PATH"
 
@@ -52,7 +52,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/theos
-          key: roothide-theos-${{ runner.os }}-v1
+          key: roothide-theos-${{ runner.os }}-v2-sdk165
 
       - name: Prepare roothide Theos
         run: |
@@ -69,6 +69,12 @@ jobs:
           test -f /opt/theos/vendor/include/roothide.h
           test -f /opt/theos/vendor/include/rootless.h
           test -f /opt/theos/vendor/include/rootless-compat.h
+          if [ ! -d /opt/theos/sdks/iPhoneOS16.5.sdk ]; then
+            sudo git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
+            cd /tmp/sdks && sudo git sparse-checkout set iPhoneOS16.5.sdk
+            sudo cp -R /tmp/sdks/iPhoneOS16.5.sdk /opt/theos/sdks/
+          fi
+          test -d /opt/theos/sdks/iPhoneOS16.5.sdk
 
       - name: Export Theos path
         run: echo "THEOS=/opt/theos" >> "$GITHUB_ENV"
