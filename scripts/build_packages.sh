@@ -150,14 +150,14 @@ run_make_target() {
     done
 
     env -i \
-        PATH="$PATH" \
+        PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" \
         HOME="$HOME" \
         THEOS="${THEOS:-}" \
         TMPDIR="${TMPDIR:-/tmp}" \
         COPYFILE_DISABLE=1 \
         COPY_EXTENDED_ATTRIBUTES_DISABLE=1 \
         XATTR_DISABLE=1 \
-        /bin/bash -lc "$cmdline" >&2
+        /bin/bash -c "$cmdline" >&2
 }
 
 remove_path_with_retry() {
