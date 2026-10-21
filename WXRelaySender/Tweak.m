@@ -238,10 +238,8 @@ static void WRProbe(void) {
         if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END ==="); return; }
         wrLog([NSString stringWithFormat:@"probe count=%lu", (unsigned long)[list count]]);
         // 1) 第 1 个联系人全继承链 ivar dump
-        unsigned int idx = 0;
         for (id c in list) {
             WRDumpIvars(c, @"c0");
-            idx++;
             break;
         }
         // 2) 昵称含“谢”的第一个联系人全继承链 ivar dump
