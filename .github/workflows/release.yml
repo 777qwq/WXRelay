@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build-and-release:
-    runs-on: macos-15
+    runs-on: macos-14
     # v2.4.2 绕障：macos runner 僵死频发，4 路并行抽签，先成功者发布（publish 步骤自幂等）
     strategy:
       fail-fast: false
@@ -51,6 +51,12 @@ jobs:
           brew install bash dpkg ldid ripgrep
           BREW_PREFIX="$(brew --prefix)"
           echo "$BREW_PREFIX/bin" >> "$GITHUB_PATH"
+
+      - name: Cache roothide Theos
+        uses: actions/cache@v4
+        with:
+          path: /opt/theos
+          key: roothide-theos-${{ runner.os }}-v1
 
       - name: Prepare roothide Theos
         run: |
