@@ -149,18 +149,14 @@ static NSString *NFExpandReply(NSString *tpl, NFNotificationRecord *record) {
     return out;
 }
 
-// v2.4.3 目标级来源 App 白名单：扁平字符串（逗号/空格分隔，bundleID 包含匹配，留空=不限）
+// v2.4.6 目标级来源 App 白名单：bundleID 数组等值匹配（picker 勾选），空数组=不限
 static BOOL NFTargetAllowsApp(NSDictionary *target, NFNotificationRecord *record) {
-    NSString *apps = [target[@"apps"] isKindOfClass:[NSString class]] ? target[@"apps"] : @"";
-    if ([[apps stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] == 0) return YES;
+    NSArray *apps = [target[@"apps"] isKindOfClass:[NSArray class]] ? target[@"apps"] : @[];
+    if (apps.count == 0) return YES;
     NSString *bid = (record.bundleIdentifier ?: @"").lowercaseString;
     if (bid.length == 0) return NO;
-    for (NSString *piece in [apps componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]) {
-        NSString *p = piece.lowercaseString;
-        for (NSString *seg in [p componentsSeparatedByString:@","]) {
-            NSString *q = [seg stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-            if (q.length && [bid containsString:q]) return YES;
-        }
+    for (NSString *a in apps) {
+        if ([a isKindOfClass:[NSString class]] && [a.lowercaseString isEqualToString:bid]) return YES;
     }
     return NO;
 }

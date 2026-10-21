@@ -3,6 +3,7 @@
 #import "NFPLocalization.h"
 #import "NFPRulesListEditorController.h"
 #import "../Shared/NFPreferences.h"
+#import "NFPAppRulesExportPickerController.h"
 
 typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WPRowApps };
 
@@ -12,7 +13,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
 @property (nonatomic, assign) BOOL enabledTarget;
 @property (nonatomic, copy) NSArray *containsRules; // [{text, scope?, reply?}] v2.4.3：每条规则可带回复
 @property (nonatomic, copy) NSArray *excludeRules;
-@property (nonatomic, copy) NSString *appsFilter;   // v2.4.3 来源 App 白名单（扁平串，留空=全部）
+@property (nonatomic, copy) NSArray *appsList;      // v2.4.6 来源 App 白名单（bundleID 数组，空=全部）
 @property (nonatomic, copy) void (^saveHandler)(NSDictionary *target);
 @property (nonatomic, strong) UITextField *idField;
 @property (nonatomic, strong) UITextField *appsField;
@@ -26,7 +27,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
         _targetId = [_target[@"id"] isKindOfClass:[NSString class]] ? _target[@"id"] : @"";
         _containsRules = [_target[@"contains"] isKindOfClass:[NSArray class]] ? _target[@"contains"] : @[];
         _excludeRules = [_target[@"exclude"] isKindOfClass:[NSArray class]] ? _target[@"exclude"] : @[];
-        _appsFilter = [_target[@"apps"] isKindOfClass:[NSString class]] ? _target[@"apps"] : @"";
+        _appsList = [_target[@"apps"] isKindOfClass:[NSArray class]] ? _target[@"apps"] : @[]; // v2.4.6 旧扁平串不迁移
         _saveHandler = saveHandler;
     }
     return self;
@@ -95,33 +96,31 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.excludeRules.count];
     } else if (indexPath.section == WPRowApps) {
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        UITextField *field = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 320, 36)];
-        field.placeholder = NFPLocalizedString(@"TARGET_APPS_PLACEHOLDER");
-        field.text = self.appsFilter;
-        field.clearButtonMode = UITextFieldViewModeWhileEditing;
-        field.autocorrectionType = UITextAutocorrectionTypeNo;
-        field.autocapitalizationType = UITextAutocapitalizationTypeNone;
-        [field addTarget:self action:@selector(appsChanged:) forControlEvents:UIControlEventEditingChanged];
-        self.appsField = field;
-        [cell.contentView addSubview:field];
-        field.frame = CGRectMake(16, 4, 300, 36);
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        unsigned long n = self.appsList.count;
+        cell.detailTextLabel.text = n ? [NSString stringWithFormat:@"%lu 个 App", n] : NFPLocalizedString(@"TARGET_APPS_PLACEHOLDER");
+        cell.detailTextLabel.textColor = [UIColor secondaryLabelColor];
     }
     return cell;
 }
 
 - (void)idChanged:(UITextField *)f { self.targetId = f.text ?: @""; }
 
-- (void)appsChanged:(UITextField *)f { self.appsFilter = f.text ?: @""; }
-
 - (void)enabledChanged:(UISwitch *)sw { self.enabledTarget = sw.on; }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == WPRowID) { [self.idField becomeFirstResponder]; return; }
-    if (indexPath.section == WPRowApps) { [self.appsField becomeFirstResponder]; return; }
     __weak typeof(self) weakSelf = self;
-    // v2.4.4：包含区 push 规则列表页（含可选回复），不再弹窗
+    if (indexPath.section == WPRowApps) {
+        NFPAppRulesExportPickerController *picker = [[NFPAppRulesExportPickerController alloc] initWithSelectedBundleIdentifiers:self.appsList selectionHandler:^(NSArray<NSString *> *selected) {
+            weakSelf.appsList = selected;
+            [weakSelf.tableView reloadData];
+        }];
+        [self.navigationController pushViewController:picker animated:YES];
+        return;
+    }
+        // v2.4.4：包含区 push 规则列表页（含可选回复），不再弹窗
     if (indexPath.section == WPRowContains) {
         NFPRulesListEditorController *editor = [[NFPRulesListEditorController alloc] initWithTitle:NFPLocalizedString(@"TARGET_ROW_EDIT_CONTAINS")
                                                                                      editorKind:NFPRuleEditorKindContains
@@ -152,7 +151,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
         [self presentViewController:a animated:YES completion:nil];
         return;
     }
-    self.saveHandler(@{ @"id": tid, @"enabled": (self.target[@"enabled"] == nil ? @YES : self.target[@"enabled"]), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[], @"apps": self.appsFilter ?: @"" });
+    self.saveHandler(@{ @"id": tid, @"enabled": (self.target[@"enabled"] == nil ? @YES : self.target[@"enabled"]), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[], @"apps": self.appsList ?: @[] });
     [self.navigationController popViewControllerAnimated:YES];
 }
 
