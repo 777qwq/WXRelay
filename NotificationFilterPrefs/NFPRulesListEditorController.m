@@ -86,6 +86,8 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    // 返回键不再继承本页标题，统一「返回」
+    self.navigationItem.backBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"返回", nil) style:UIBarButtonItemStylePlain target:nil action:nil];
 
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];

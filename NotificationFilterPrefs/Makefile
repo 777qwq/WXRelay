@@ -8,8 +8,6 @@ NotificationFilterPrefs_FILES = \
 	NFPLocalization.m \
 	NFPRootListController.m \
 	NFPAppInfoProvider.m \
-	NFPAppRulesListController.m \
-	NFPPerAppRulesController.m \
 	NFPMultilineRulesEditorController.m \
 	NFPRuleCardCell.m \
 	NFPRuleTextEditorController.m \
@@ -19,9 +17,6 @@ NotificationFilterPrefs_FILES = \
 	NFPNotificationRuleTokenBuilder.m \
 	NFPNotificationRuleTokenPickerController.m \
 	NFPNotificationHistoryClient.m \
-	NFPJSONImportController.m \
-	NFPImportExportController.m \
-	NFPImportExportPayload.m \
 	NFPAppRulesExportPickerController.m \
 	NFPLogsListController.m \
 	NFPLogDetailController.m \

@@ -5,8 +5,6 @@
 #import "NFPLocalization.h"
 #import "NFPRulesListEditorController.h"
 #import "NFPWeChatTargetEditorController.h"
-#import "NFPAppRulesListController.h"
-#import "NFPImportExportController.h"
 #import "NFPLogsListController.h"
 
 @interface NFPRootListController () <UITextViewDelegate>
@@ -26,8 +24,6 @@ static void NAVLog(NSString *msg) {
 
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
 static NSString * const NFPGlobalRulesSpecifierID = @"ROOT_GLOBAL_RULES";
-static NSString * const NFPAppRulesSpecifierID = @"ROOT_APP_RULES";
-static NSString * const NFPImportExportSpecifierID = @"ROOT_IMPORT_EXPORT";
 static NSString * const NFPFilteredLogsSpecifierID = @"ROOT_FILTERED_LOGS";
 static NSString * const NFPWeChatTargetsSpecifierID = @"ROOT_WECHAT_TARGETS";
 static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WXRelay";
@@ -67,12 +63,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     }
     return [NSString stringWithFormat:NFPLocalizedString(@"ROOT_SUMMARY_RULE_COUNT_FORMAT"),
                                       (unsigned long)[NFPreferences globalRuleEntryCountFromPreferences:preferences]];
-}
-
-- (NSString *)appRulesSummary {
-    NSDictionary *preferences = [NFPreferences loadPreferences];
-    return [NSString stringWithFormat:NFPLocalizedString(@"ROOT_SUMMARY_ENABLED_APPS_FORMAT"),
-                                      (unsigned long)[NFPreferences enabledAppRulesCountFromPreferences:preferences]];
 }
 
 - (NSArray<NSDictionary *> *)targetListFromPrefs {
@@ -141,6 +131,20 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     NSError *error = nil;
     if (![NFPreferences savePreferences:preferences error:&error]) { return; }
     [NFPreferences postPreferencesChangedNotification];
+}
+
+- (NSString *)targetRowSummary:(NSDictionary *)t {
+    // 信息从编辑器上浮一层：关键词数 · 排除数 · 白名单 App 数
+    NSArray *contains = [t[@"contains"] isKindOfClass:[NSArray class]] ? t[@"contains"] : @[];
+    NSArray *exclude = [t[@"exclude"] isKindOfClass:[NSArray class]] ? t[@"exclude"] : @[];
+    NSArray *apps = [t[@"apps"] isKindOfClass:[NSArray class]] ? t[@"apps"] : @[];
+    BOOL enabled = t[@"enabled"] == nil ? YES : [t[@"enabled"] boolValue];
+    NSMutableString *out = [NSMutableString string];
+    if (!enabled) [out appendString:@"已停用 · "];
+    [out appendFormat:@"%lu 关键词", (unsigned long)contains.count];
+    if (exclude.count) [out appendFormat:@" · 排除 %lu", (unsigned long)exclude.count];
+    [out appendFormat:@" · 白名单 %lu App", (unsigned long)apps.count];
+    return out;
 }
 
 - (NSString *)wechatTargetsSummary {
@@ -250,11 +254,13 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
 // leaves the row without a summary (import/export).
 - (id)readLinkSummary:(PSSpecifier *)specifier {
     NSString *identifier = [specifier propertyForKey:PSIDKey];
-    if ([identifier isEqualToString:NFPAppRulesSpecifierID]) {
-        return [self appRulesSummary];
-    }
     if ([identifier isEqualToString:NFPWeChatTargetsSpecifierID]) {
         return [self wechatTargetsSummary];
+    }
+    if ([identifier hasPrefix:@"target-"]) {
+        NSInteger index = [[identifier substringFromIndex:@"target-".length] integerValue];
+        NSArray *list = [self targetListFromPrefs];
+        if (index < (NSInteger)list.count) return [self targetRowSummary:list[index]];
     }
     if ([identifier isEqualToString:NFPFilteredLogsSpecifierID]) {
         return [self filteredLogsSummary];
@@ -302,7 +308,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
         }
         [sw addTarget:self action:@selector(targetSwitchChanged:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = sw;
-        cell.detailTextLabel.text = nil;
     } else if ([cell.accessoryView isKindOfClass:[UISwitch class]]
                && [cell.accessoryView.accessibilityIdentifier isEqualToString:@"wxrelay-target-switch"]) {
         cell.accessoryView = nil; // 只清我们自己挂的开关，别动 PSSwitchCell 的系统开关
@@ -338,18 +343,8 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     [NFPreferences postPreferencesChangedNotification];
 }
 
-- (void)openAppRules:(PSSpecifier *)specifier {
-    NFPAppRulesListController *controller = [[NFPAppRulesListController alloc] initWithStyle:UITableViewStyleInsetGrouped];
-    [self.navigationController pushViewController:controller animated:YES];
-}
-
 - (void)openLogs:(PSSpecifier *)specifier {
     NFPLogsListController *controller = [[NFPLogsListController alloc] initWithStyle:UITableViewStyleInsetGrouped];
-    [self.navigationController pushViewController:controller animated:YES];
-}
-
-- (void)openImportExport:(PSSpecifier *)specifier {
-    NFPImportExportController *controller = [[NFPImportExportController alloc] initWithStyle:UITableViewStyleInsetGrouped];
     [self.navigationController pushViewController:controller animated:YES];
 }
 

@@ -121,6 +121,14 @@ static void NAVLog(NSString *msg) {
     return NFPLocalizedString(@"TARGET_JUDGE_FOOTER");
 }
 
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.section == WPRowApps && indexPath.row == 1) {
+        NSArray *names = [self displayNamesForAppsList];
+        return names.count ? 46.0 : 0.0;
+    }
+    return UITableViewAutomaticDimension;
+}
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     // v2.4.2：每种行独立复用 ID，防复用污染
     NSString *reuse = @"wrow-link";
@@ -161,10 +169,8 @@ static void NAVLog(NSString *msg) {
         // v2.5.6 条形框：空内容隐藏整行；App 名默认色
         NSArray *names = [self displayNamesForAppsList];
         if (names.count == 0) {
-            cell.hidden = YES;
-            return cell;
+            return [tableView dequeueReusableCellWithIdentifier:@"wrow-text"] ?: [[UITableViewCell alloc] init];
         }
-        cell.hidden = NO;
         cell.accessoryType = UITableViewCellAccessoryNone;
         cell.textLabel.text = nil;
         cell.detailTextLabel.text = nil;

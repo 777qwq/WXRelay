@@ -182,7 +182,6 @@
         [replyOnlyField.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
         [replyOnlyField.heightAnchor constraintEqualToConstant:44.0],
         [replyLabel.topAnchor constraintEqualToAnchor:replyOnlyField.bottomAnchor constant:14.0],
-        [replyLabel.topAnchor constraintEqualToAnchor:replyContainer.topAnchor],
         [replyLabel.leadingAnchor constraintEqualToAnchor:replyContainer.leadingAnchor],
         [replyLabel.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
         [replyField.topAnchor constraintEqualToAnchor:replyLabel.bottomAnchor constant:8.0],
