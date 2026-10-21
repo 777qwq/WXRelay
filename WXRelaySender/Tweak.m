@@ -12,6 +12,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <Foundation/Foundation.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
 
 static void wrLog(NSString *msg) {
     @try {
@@ -38,18 +39,8 @@ static NSString *WRResolveTargetID(NSString *targetId) {
         id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr) return nil;
-        // 1) 官方精准接口（显示名精确匹配）
-        if ([mgr respondsToSelector:@selector(getContactByDisplayName:)]) {
-            id contact = ((id(*)(id,SEL,id))objc_msgSend)(mgr, @selector(getContactByDisplayName:), targetId);
-            if (contact && [contact respondsToSelector:@selector(m_nsUsrName)]) {
-                id wxid = ((id(*)(id,SEL))objc_msgSend)(contact, @selector(m_nsUsrName));
-                if ([wxid isKindOfClass:[NSString class]] && [(NSString *)wxid length] > 0) {
-                    wrLog([NSString stringWithFormat:@"resolve '%@' -> %@", targetId, wxid]);
-                    return wxid;
-                }
-            }
-        }
-        // 2) 备注名/昵称精准匹配：遍历联系人表，== 比较；唯一命中才用，多命中弃用
+        // 8.0.50 实证：getContactByDisplayName 不存在，直接走列表精准扫描
+        // v2.3.5：备注名/昵称精准匹配，== 比较；唯一命中才用，多命中弃用
         if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) return nil;
         id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
         if (![list isKindOfClass:[NSArray class]]) return nil;
@@ -213,39 +204,52 @@ static BOOL WRKeepAliveEnabled(void) {
     return YES;
 }
 
-// ===== v2.3.3 探针（一次性，验证解析链后删除）=====
+// ===== v2.3.5 探针（一次性，验证解析链后删除）=====
+static void WRDumpIvars(id obj, NSString *tag) {
+    @autoreleasepool {
+        Class cls = object_getClass(obj);
+        unsigned int count = 0;
+        Ivar *ivars = class_copyIvarList(cls, &count);
+        wrLog([NSString stringWithFormat:@"probe ivars[%@] class=%@ count=%u", tag, NSStringFromClass(cls), count]);
+        for (unsigned int i = 0; i < count; i++) {
+            const char *name = ivar_getName(ivars[i]);
+            const char *type = ivar_getTypeEncoding(ivars[i]);
+            if (type[0] != '@') continue; // 只 dump 对象类型
+            id v = object_getIvar(obj, ivars[i]);
+            if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0)
+                wrLog([NSString stringWithFormat:@"probe %s = %@", name, v]);
+        }
+        free(ivars);
+    }
+}
+
 static void WRProbe(void) {
     @autoreleasepool {
         wrLog(@"=== PROBE START ===");
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
-        wrLog([NSString stringWithFormat:@"probe cls CContactMgr=%d MMServiceCenter=%d", CContactMgr!=nil, MMServiceCenter!=nil]);
         if (!CContactMgr || !MMServiceCenter) { wrLog(@"=== PROBE END (no cls) ==="); return; }
         id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
         id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
-        wrLog([NSString stringWithFormat:@"probe mgr=%d getByName=%d getList2=%d", mgr!=nil,
-            [mgr respondsToSelector:@selector(getContactByDisplayName:)],
-            [mgr respondsToSelector:@selector(getContactList:contactType:)]]);
-        if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) { wrLog(@"=== PROBE END (no list) ==="); return; }
+        if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) { wrLog(@"=== PROBE END ==="); return; }
         id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
-        wrLog([NSString stringWithFormat:@"probe list=%@ count=%lu", NSStringFromClass([list class]), (unsigned long)([list isKindOfClass:[NSArray class]]?[list count]:0)]);
-        if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END (bad list) ==="); return; }
-        unsigned int shown = 0;
+        if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END ==="); return; }
+        wrLog([NSString stringWithFormat:@"probe count=%lu", (unsigned long)[list count]]);
+        // 1) 前 2 个联系人全 ivar dump
+        unsigned int idx = 0;
         for (id c in list) {
-            if (shown >= 5) break;
-            id uid  = [c respondsToSelector:@selector(m_nsUsrName)]  ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsUsrName))  : nil;
-            id nick = [c respondsToSelector:@selector(m_nsNickName)] ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName)) : nil;
-            id rem  = [c respondsToSelector:@selector(m_nsRemark)]   ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark))   : nil;
-            wrLog([NSString stringWithFormat:@"probe c[%u] usr=%@ nick=%@ remark=%@",
-                shown,
-                [uid isKindOfClass:[NSString class]]?uid:@"(nil/type%)",
-                [nick isKindOfClass:[NSString class]]?nick:@"(nil)",
-                [rem isKindOfClass:[NSString class]]?rem:@"(nil)"]);
-            shown++;
+            if (idx >= 2) break;
+            WRDumpIvars(c, [NSString stringWithFormat:@"c%u", idx]);
+            idx++;
         }
-        // 精准匹配实测：取最后一个配置目标（非标准 id 的那个，如“谢”）
-        id prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.tune.notificationfilter.plist"];
-        wrLog([NSString stringWithFormat:@"probe prefs=%d", prefs!=nil]);
+        // 2) 昵称含“谢”的联系人全 ivar dump
+        for (id c in list) {
+            if (![c respondsToSelector:@selector(m_nsNickName)]) continue;
+            id nick = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName));
+            if ([nick isKindOfClass:[NSString class]] && [(NSString *)nick containsString:@"谢"]) {
+                WRDumpIvars(c, @"xie");
+            }
+        }
         wrLog(@"=== PROBE END ===");
     }
 }
