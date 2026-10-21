@@ -70,8 +70,16 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyRules, WPSubRe
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSString *reuse = (indexPath.section == WPRowID || (indexPath.section == WPRowAction && indexPath.row == WPSubReplyText)) ? @"wrow-id" : @"wrow-link";
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuse forIndexPath:indexPath];
+    // v2.4.2 修 cell 复用污染：每种行独立复用 ID
+    NSString *reuse = @"wrow-link";
+    if (indexPath.section == WPRowID) reuse = @"wrow-id";
+    else if (indexPath.section == WPRowAction && indexPath.row == WPSubAction) reuse = @"wrow-seg";
+    else if (indexPath.section == WPRowAction && indexPath.row == WPSubReplyRules) reuse = @"wrow-link";
+    else if (indexPath.section == WPRowAction && indexPath.row == WPSubReplyText) reuse = @"wrow-text";
+    else if (indexPath.section == WPRowContains) reuse = @"wrow-contains";
+    else if (indexPath.section == WPRowExclude) reuse = @"wrow-exclude";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:reuse];
+    if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:reuse];
     cell.textLabel.text = nil;
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.detailTextLabel.text = nil;
@@ -89,9 +97,11 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyRules, WPSubRe
         [cell.contentView addSubview:field];
         field.frame = CGRectMake(16, 4, 300, 36);
     } else if (indexPath.section == WPRowContains) {
+        for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_CONTAINS");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.containsRules.count];
     } else if (indexPath.section == WPRowExclude) {
+        for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.excludeRules.count];
     } else if (indexPath.section == WPRowAction && indexPath.row == WPSubAction) {
