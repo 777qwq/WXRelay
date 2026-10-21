@@ -62,7 +62,9 @@ static void NAVLog(NSString *msg) {
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return 1; }
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return (section == WPRowApps) ? 2 : 1;
+}
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     if (section == WPRowID) return NFPLocalizedString(@"TARGET_SECTION_ID");
