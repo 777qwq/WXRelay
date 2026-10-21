@@ -272,3 +272,4 @@
 "RULE_TEXT_REPLY_LABEL" = "Reply text (empty = relay original only)";
 "RULE_TEXT_REPLY_PLACEHOLDER" = "Placeholders: {app} {title} {body}";
 "APP_PICKER_TITLE" = "Select source apps";
+"TARGET_APPS_BAR_EMPTY" = "Tap to select apps";

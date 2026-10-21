@@ -12,6 +12,16 @@
 @interface NFPRootListController () <UITextViewDelegate>
 @end
 
+static void NAVLog(NSString *msg) {
+    @try {
+        NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
+        NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+    } @catch (NSException *e) { }
+}
+
 @implementation NFPRootListController
 
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
@@ -30,7 +40,19 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    NSUInteger depth = self.navigationController.viewControllers.count;
+    NAVLog([NSString stringWithFormat:@"root viewWillAppear stack=%lu", (unsigned long)depth]);
     [self reloadSpecifiers];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    NSUInteger depth = self.navigationController.viewControllers.count;
+    NAVLog([NSString stringWithFormat:@"root viewWillDisappear stack=%lu", (unsigned long)depth]);
+}
+
+- (void)dealloc {
+    NAVLog(@"root DEALLOC (重建证据)");
 }
 
 - (NSString *)globalRulesSummary {
