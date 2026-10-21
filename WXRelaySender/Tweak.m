@@ -29,32 +29,64 @@ static void wrLog(NSString *msg) {
     } @catch (NSException *e) { }
 }
 
-// v2.3.1 路A：备注/昵称 → wxid 解析；解析不到原样发送（wxid/群id/filehelper 直通）
+// v2.3.2 路A：备注/昵称 → wxid，**仅精准匹配**（不做包含/前缀）；解析失败返回 nil，绝不裸发
 static NSString *WRResolveTargetID(NSString *targetId) {
     @try {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
-        if (!CContactMgr || !MMServiceCenter) return targetId;
+        if (!CContactMgr || !MMServiceCenter) return nil;
         id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
-        if (!mgr || ![mgr respondsToSelector:@selector(getContactByDisplayName:)]) return targetId;
-        id contact = ((id(*)(id,SEL,id))objc_msgSend)(mgr, @selector(getContactByDisplayName:), targetId);
-        if (!contact) return targetId;
-        if (![contact respondsToSelector:@selector(m_nsUsrName)]) return targetId;
-        id wxid = ((id(*)(id,SEL))objc_msgSend)(contact, @selector(m_nsUsrName));
-        if ([wxid isKindOfClass:[NSString class]] && [(NSString *)wxid length] > 0 && ![wxid isEqualToString:targetId]) {
-            wrLog([NSString stringWithFormat:@"resolve '%@' -> %@", targetId, wxid]);
-            return wxid;
+        if (!mgr) return nil;
+        // 1) 官方精准接口（显示名精确匹配）
+        if ([mgr respondsToSelector:@selector(getContactByDisplayName:)]) {
+            id contact = ((id(*)(id,SEL,id))objc_msgSend)(mgr, @selector(getContactByDisplayName:), targetId);
+            if (contact && [contact respondsToSelector:@selector(m_nsUsrName)]) {
+                id wxid = ((id(*)(id,SEL))objc_msgSend)(contact, @selector(m_nsUsrName));
+                if ([wxid isKindOfClass:[NSString class]] && [(NSString *)wxid length] > 0) {
+                    wrLog([NSString stringWithFormat:@"resolve '%@' -> %@", targetId, wxid]);
+                    return wxid;
+                }
+            }
         }
-        return targetId;
-    } @catch (NSException *e) { return targetId; }
+        // 2) 备注名/昵称精准匹配：遍历联系人表，== 比较；唯一命中才用，多命中弃用
+        if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) return nil;
+        id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
+        if (![list isKindOfClass:[NSArray class]]) return nil;
+        id hit = nil; unsigned int hits = 0;
+        for (id c in list) {
+            if (![c respondsToSelector:@selector(m_nsRemark)]) continue;
+            id remark = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark));
+            BOOL rm = [remark isKindOfClass:[NSString class]] && [(NSString *)remark isEqualToString:targetId];
+            id nick = [c respondsToSelector:@selector(m_nsNickName)] ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName)) : nil;
+            BOOL nm = [nick isKindOfClass:[NSString class]] && [(NSString *)nick isEqualToString:targetId];
+            if (rm || nm) {
+                hit = c; hits++;
+                if (hits > 1) break; // 多命中：撞名，弃用
+            }
+        }
+        if (hits == 1 && hit && [hit respondsToSelector:@selector(m_nsUsrName)]) {
+            id wxid = ((id(*)(id,SEL))objc_msgSend)(hit, @selector(m_nsUsrName));
+            if ([wxid isKindOfClass:[NSString class]] && [(NSString *)wxid length] > 0) {
+                wrLog([NSString stringWithFormat:@"resolve '%@' -> %@", targetId, wxid]);
+                return wxid;
+            }
+        }
+        if (hits > 1) wrLog([NSString stringWithFormat:@"resolve '%@' ambiguous (%u), skip", targetId, hits]);
+        return nil;
+    } @catch (NSException *e) { return nil; }
 }
 
 // v2.3.0 直发：进程内私 API，走微信原生发送管线（CMessageMgr AddMsg），不再依赖懒猫 handleOpenURL
 // 参考：DKWechatHelper sendMsg（8.x 实战）+ iWeChat dump 头；真机签名待验证
 static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     @try {
-        targetId = WRResolveTargetID(targetId);
+        // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
+        BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
+            || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
+        NSString *resolved = isPlainID ? targetId : WRResolveTargetID(targetId);
+        if (!resolved) { wrLog([NSString stringWithFormat:@"resolve failed, skip '%@'", targetId]); return NO; }
+        targetId = resolved;
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         Class CMessageMgr = objc_getClass("CMessageMgr");
         Class CMessageWrap = objc_getClass("CMessageWrap");
