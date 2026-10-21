@@ -242,6 +242,22 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
     NSString *placeholder = NFPLocalizedRulesListPlaceholderForMode(self.editorKind, self.ruleMode);
 
     __weak typeof(self) weakSelf = self;
+    if (self.editorKind == NFPRuleEditorKindContains) {
+        // v2.4.4 包含规则：带可选回复文本
+        NSString *reply = [ruleEntry isKindOfClass:[NSDictionary class]] ? ([ruleEntry[@"reply"] isKindOfClass:[NSString class]] ? ruleEntry[@"reply"] : @"") : @"";
+        NFPRuleTextEditorController *controller = [[NFPRuleTextEditorController alloc] initWithTitle:self.title
+                                                                                          placeholder:placeholder
+                                                                                          initialRule:[NFPreferences ruleTextFromEntry:ruleEntry]
+                                                                                         initialScope:[NFPreferences ruleScopeFromEntry:ruleEntry
+                                                                                                                        defaultScope:NFPRuleDefaultScopeForEditorKind(self.editorKind)]
+                                                                                        initialReply:reply
+                                                                                           editorKind:self.editorKind
+                                                                                          saveHandler:^(NSString *newRule, NSString *scope, NSString *reply) {
+            [weakSelf saveRule:newRule scope:scope reply:reply atIndex:index];
+        }];
+        [self.navigationController pushViewController:controller animated:YES];
+        return;
+    }
     NFPRuleTextEditorController *controller = [[NFPRuleTextEditorController alloc] initWithTitle:self.title
                                                                                       placeholder:placeholder
                                                                                       initialRule:[NFPreferences ruleTextFromEntry:ruleEntry]
@@ -252,6 +268,28 @@ static NSString *NFPRuleDefaultScopeForEditorKind(NFPRuleEditorKind editorKind) 
         [weakSelf saveRule:newRule scope:scope atIndex:index];
     }];
     [self.navigationController pushViewController:controller animated:YES];
+}
+
+- (void)saveRule:(NSString *)rule scope:(NSString *)scope reply:(NSString *)reply atIndex:(NSUInteger)index {
+    NSMutableArray<NSDictionary *> *updatedRules = [self.rules mutableCopy];
+    if (index == NSNotFound || index >= updatedRules.count) {
+        [updatedRules addObject:[NFPreferences ruleEntryWithText:rule enabled:YES identifier:nil scope:scope]];
+        NSMutableDictionary *e = [updatedRules.lastObject mutableCopy];
+        if (reply.length) e[@"reply"] = reply;
+        updatedRules[updatedRules.count - 1] = e;
+    } else {
+        NSDictionary *existingEntry = updatedRules[index];
+        NSMutableDictionary *e = [[NFPreferences ruleEntryWithText:rule
+                                                           enabled:[NFPreferences ruleEntryEnabled:existingEntry]
+                                                         identifier:existingEntry[NFRuleEntryIdentifierKey]
+                                                              scope:scope] mutableCopy];
+        if (reply.length) e[@"reply"] = reply; else [e removeObjectForKey:@"reply"];
+        updatedRules[index] = e;
+    }
+    self.rules = [[NFPreferences normalizedRuleEntriesFromArray:updatedRules
+                                                   defaultScope:NFPRuleDefaultScopeForEditorKind(self.editorKind)] mutableCopy];
+    [self persistRules];
+    [self.tableView reloadData];
 }
 
 - (void)saveRule:(NSString *)rule scope:(NSString *)scope atIndex:(NSUInteger)index {

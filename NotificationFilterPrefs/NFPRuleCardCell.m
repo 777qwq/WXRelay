@@ -167,7 +167,16 @@
     self.titleLeadingConstraint.constant = editingMode ? 50.0 : 14.0;
     self.subtitleLeadingConstraint.constant = editingMode ? 50.0 : 14.0;
 
-    self.subtitleLabel.text = NFPLocalizedScopeName(scope);
+    // v2.4.4：包含规则显示回复摘要
+    NSString *reply = [ruleEntry isKindOfClass:[NSDictionary class]] ? ([ruleEntry[@"reply"] isKindOfClass:[NSString class]] ? ruleEntry[@"reply"] : @"") : @"";
+    NSString *scopeName = NFPLocalizedScopeName(scope);
+    if (editorKind == NFPRuleEditorKindContains && reply.length > 0) {
+        self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ %@", scopeName, reply];
+    } else if (editorKind == NFPRuleEditorKindContains) {
+        self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ %@", scopeName, NFPLocalizedString(@"RULES_ROW_RELAY_ONLY")];
+    } else {
+        self.subtitleLabel.text = scopeName;
+    }
 
     self.titleLabel.textColor = enabled ? [UIColor labelColor] : [UIColor secondaryLabelColor];
     self.cardView.alpha = enabled ? 1.0 : 0.75;

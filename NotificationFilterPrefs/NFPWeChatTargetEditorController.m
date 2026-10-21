@@ -121,41 +121,16 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
     if (indexPath.section == WPRowID) { [self.idField becomeFirstResponder]; return; }
     if (indexPath.section == WPRowApps) { [self.appsField becomeFirstResponder]; return; }
     __weak typeof(self) weakSelf = self;
-    // v2.4.3：包含区=规则列表，每行「关键词=回复」，回复可空=纯转发
+    // v2.4.4：包含区 push 规则列表页（含可选回复），不再弹窗
     if (indexPath.section == WPRowContains) {
-        NSMutableString *flat = [NSMutableString string];
-        for (NSDictionary *r in self.containsRules) {
-            NSString *kw = [r isKindOfClass:[NSDictionary class]] ? ([r[@"text"] isKindOfClass:[NSString class]] ? r[@"text"] : @"") : (NSString *)r;
-            NSString *rp = [r isKindOfClass:[NSDictionary class]] ? ([r[@"reply"] isKindOfClass:[NSString class]] ? r[@"reply"] : @"") : @"";
-            if (kw.length) [flat appendFormat:@"%@=%@\n", kw, rp];
-        }
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:NFPLocalizedString(@"TARGET_ROW_EDIT_RULES") message:NFPLocalizedString(@"TARGET_RULES_HINT") preferredStyle:UIAlertControllerStyleAlert];
-        [alert addTextFieldWithConfigurationHandler:^(UITextField *f) {
-            f.text = flat;
-            f.autocorrectionType = UITextAutocorrectionTypeNo;
-            f.autocapitalizationType = UITextAutocapitalizationTypeNone;
-        }];
-        [alert addAction:[UIAlertAction actionWithTitle:NFPLocalizedString(@"COMMON_OK") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
-            NSMutableArray *arr = [NSMutableArray array];
-            for (NSString *line in [alert.textFields.firstObject.text componentsSeparatedByString:@"\n"]) {
-                NSString *l = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-                if (l.length == 0) continue;
-                NSRange eq = [l rangeOfString:@"="];
-                NSMutableDictionary *entry = [NSMutableDictionary dictionary];
-                if (eq.location == NSNotFound) {
-                    entry[@"text"] = l; // 纯转发规则
-                } else {
-                    entry[@"text"] = [[l substringToIndex:eq.location] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-                    entry[@"reply"] = [[l substringFromIndex:NSMaxRange(eq)] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-                    if ([entry[@"text"] length] == 0) continue;
-                }
-                [arr addObject:entry];
-            }
-            weakSelf.containsRules = arr;
+        NFPRulesListEditorController *editor = [[NFPRulesListEditorController alloc] initWithTitle:NFPLocalizedString(@"TARGET_ROW_EDIT_CONTAINS")
+                                                                                     editorKind:NFPRuleEditorKindContains
+                                                                                          rules:self.containsRules
+                                                                                    saveHandler:^(NSArray *saved) {
+            weakSelf.containsRules = saved;
             [weakSelf.tableView reloadData];
-        }]];
-        [alert addAction:[UIAlertAction actionWithTitle:NFPLocalizedString(@"COMMON_CANCEL") style:UIAlertActionStyleCancel handler:nil]];
-        [self presentViewController:alert animated:YES completion:nil];
+        }];
+        [self.navigationController pushViewController:editor animated:YES];
         return;
     }
     NSString *title = NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");

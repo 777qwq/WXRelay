@@ -8,7 +8,9 @@
 @property (nonatomic, copy) NSString *initialRule;
 @property (nonatomic, copy) NSString *initialScope;
 @property (nonatomic, assign) NFPRuleEditorKind editorKind;
-@property (nonatomic, copy) void (^saveHandler)(NSString *rule, NSString *scope);
+@property (nonatomic, copy) void (^saveHandler)(NSString *rule, NSString *scope, NSString *reply);
+@property (nonatomic, copy) NSString *initialReply;
+@property (nonatomic, strong) UITextField *replyField;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
 @property (nonatomic, copy) NSString *selectedScopeValue;
@@ -28,6 +30,18 @@
                  initialScope:(NSString *)initialScope
                    editorKind:(NFPRuleEditorKind)editorKind
                   saveHandler:(void (^)(NSString *, NSString *))saveHandler {
+    return [self initWithTitle:title placeholder:placeholder initialRule:initialRule initialScope:initialScope initialReply:nil editorKind:editorKind saveHandler:^(NSString *rule, NSString *scope, NSString *reply) {
+        saveHandler(rule, scope);
+    }];
+}
+
+- (instancetype)initWithTitle:(NSString *)title
+                  placeholder:(NSString *)placeholder
+                  initialRule:(NSString *)initialRule
+                 initialScope:(NSString *)initialScope
+                initialReply:(NSString *)initialReply
+                   editorKind:(NFPRuleEditorKind)editorKind
+                  saveHandler:(void (^)(NSString *, NSString *, NSString *))saveHandler {
     self = [super initWithNibName:nil bundle:nil];
     if (self) {
         self.title = title;
@@ -36,6 +50,7 @@
         _initialScope = [initialScope copy] ?: NFRuleScopeAll;
         _selectedScopeValue = _initialScope;
         _editorKind = editorKind;
+        _initialReply = [initialReply copy] ?: @"";
         _saveHandler = [saveHandler copy];
     }
     return self;
@@ -111,6 +126,42 @@
     [self.view addSubview:textView];
     self.textView = textView;
 
+    // v2.4.4 回复文本框（仅包含规则）
+    UIView *replyContainer = [[UIView alloc] init];
+    BOOL replyContainerHidden = (self.editorKind != NFPRuleEditorKindContains);
+    replyContainer.hidden = replyContainerHidden;
+    replyContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:replyContainer];
+    UILabel *replyLabel = [[UILabel alloc] init];
+    replyLabel.text = NFPLocalizedString(@"RULE_TEXT_REPLY_LABEL");
+    replyLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    replyLabel.textColor = [UIColor secondaryLabelColor];
+    replyLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [replyContainer addSubview:replyLabel];
+    UITextField *replyField = [[UITextField alloc] init];
+    replyField.placeholder = NFPLocalizedString(@"RULE_TEXT_REPLY_PLACEHOLDER");
+    replyField.text = self.initialReply;
+    replyField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    replyField.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    replyField.font = [UIFont systemFontOfSize:16.0];
+    replyField.layer.cornerRadius = 12.0;
+    replyField.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+    replyField.layer.borderColor = [UIColor separatorColor].CGColor;
+    [replyField addTarget:self action:@selector(replyFieldEdited:) forControlEvents:UIControlEventEditingChanged];
+    replyField.translatesAutoresizingMaskIntoConstraints = NO;
+    [replyContainer addSubview:replyField];
+    self.replyField = replyField;
+    [NSLayoutConstraint activateConstraints:@[
+        [replyLabel.topAnchor constraintEqualToAnchor:replyContainer.topAnchor],
+        [replyLabel.leadingAnchor constraintEqualToAnchor:replyContainer.leadingAnchor],
+        [replyLabel.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
+        [replyField.topAnchor constraintEqualToAnchor:replyLabel.bottomAnchor constant:8.0],
+        [replyField.leadingAnchor constraintEqualToAnchor:replyContainer.leadingAnchor],
+        [replyField.trailingAnchor constraintEqualToAnchor:replyContainer.trailingAnchor],
+        [replyField.heightAnchor constraintEqualToConstant:44.0],
+        [replyField.bottomAnchor constraintEqualToAnchor:replyContainer.bottomAnchor]
+    ]];
+
     UIView *hintCardView = [[UIView alloc] init];
     hintCardView.translatesAutoresizingMaskIntoConstraints = NO;
     hintCardView.layer.cornerRadius = 14.0;
@@ -177,7 +228,11 @@
         [scopeRow.trailingAnchor constraintEqualToAnchor:scopeContainer.trailingAnchor],
         [scopeRow.bottomAnchor constraintEqualToAnchor:scopeContainer.bottomAnchor],
 
-        [hintCardView.topAnchor constraintEqualToAnchor:scopeContainer.bottomAnchor constant:12.0],
+        [replyContainer.topAnchor constraintEqualToAnchor:scopeContainer.bottomAnchor constant:12.0],
+        [replyContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
+        [replyContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+
+        [hintCardView.topAnchor constraintEqualToAnchor:replyContainerHidden ? scopeContainer.bottomAnchor : replyContainer.bottomAnchor constant:12.0],
         [hintCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [hintCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
 
@@ -250,7 +305,8 @@
     }
 
     if (self.saveHandler) {
-        self.saveHandler(normalizedRule, [self selectedScope]);
+        NSString *reply = [self.replyField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        self.saveHandler(normalizedRule, [self selectedScope], reply ?: @"");
     }
 
     [self.navigationController popViewControllerAnimated:YES];
@@ -343,6 +399,8 @@
     self.hintTitleLabel.text = NFPLocalizedString(@"RULE_TEXT_HINT_MESSAGE_TITLE");
     self.hintDetailLabel.text = NFPLocalizedString(@"RULE_TEXT_HINT_MESSAGE_DETAIL");
 }
+
+- (void)replyFieldEdited:(UITextField *)f { }
 
 - (void)presentAlertWithTitle:(NSString *)title message:(NSString *)message {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
