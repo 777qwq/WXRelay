@@ -5,7 +5,7 @@
 "RULES_LINK_EXCLUDE" = "排除规则";
 "RULES_LINK_REGEX" = "正则规则";
 "ROOT_WECHAT_TARGETS" = "转发目标";
-"ROOT_TARGETS_FOOTER" = "每个目标 = 一个接收 id + 独立开关 + 自己的包含/排除关键词。接收 id 填 wxid / 群id(@chatroom) / filehelper，或备注·昵称全名（精准匹配，解析失败不转发）。右上角 + 新建；点击目标行编辑；开关直接启停该目标。";
+"ROOT_TARGETS_FOOTER" = "每个目标 = 一个接收 id + 独立开关 + 自己的包含/排除关键词。";
 "ROOT_KEEPALIVE" = "微信后台保活";
 "ROOT_KEEPALIVE_FOOTER" = "微信后台保持常驻（静音保活），关闭后微信被系统回收时转发会延迟到下次打开微信。";
 "ROOT_LOGGING" = "记录转发";

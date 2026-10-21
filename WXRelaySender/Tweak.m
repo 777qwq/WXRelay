@@ -264,6 +264,9 @@ __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRProbeNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.probe", NULL,
             CFNotificationSuspensionBehaviorDeliverImmediately);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(25.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            WRProbe(); // v2.3.3 探针自动跑一次（无 SSH 触发方案）
+        });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRFlushTasks(); // 启动补发积压
             if (WRKeepAliveEnabled()) WRSetupKeepAlive();
