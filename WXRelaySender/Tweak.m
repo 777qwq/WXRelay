@@ -208,18 +208,20 @@ static BOOL WRKeepAliveEnabled(void) {
 static void WRDumpIvars(id obj, NSString *tag) {
     @autoreleasepool {
         Class cls = object_getClass(obj);
-        unsigned int count = 0;
-        Ivar *ivars = class_copyIvarList(cls, &count);
-        wrLog([NSString stringWithFormat:@"probe ivars[%@] class=%@ count=%u", tag, NSStringFromClass(cls), count]);
-        for (unsigned int i = 0; i < count; i++) {
-            const char *name = ivar_getName(ivars[i]);
-            const char *type = ivar_getTypeEncoding(ivars[i]);
-            if (type[0] != '@') continue; // 只 dump 对象类型
-            id v = object_getIvar(obj, ivars[i]);
-            if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0)
-                wrLog([NSString stringWithFormat:@"probe %s = %@", name, v]);
+        for (Class c = cls; c != nil; c = class_getSuperclass(c)) {
+            unsigned int count = 0;
+            Ivar *ivars = class_copyIvarList(c, &count);
+            wrLog([NSString stringWithFormat:@"probe ivars[%@] class=%@ count=%u", tag, NSStringFromClass(c), count]);
+            for (unsigned int i = 0; i < count; i++) {
+                const char *name = ivar_getName(ivars[i]);
+                const char *type = ivar_getTypeEncoding(ivars[i]);
+                if (type[0] != '@') continue; // 只 dump 对象类型
+                id v = object_getIvar(obj, ivars[i]);
+                if ([v isKindOfClass:[NSString class]] && [(NSString *)v length] > 0)
+                    wrLog([NSString stringWithFormat:@"probe %s = %@", name, v]);
+            }
+            free(ivars);
         }
-        free(ivars);
     }
 }
 
@@ -235,21 +237,24 @@ static void WRProbe(void) {
         id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
         if (![list isKindOfClass:[NSArray class]]) { wrLog(@"=== PROBE END ==="); return; }
         wrLog([NSString stringWithFormat:@"probe count=%lu", (unsigned long)[list count]]);
-        // 1) 前 2 个联系人全 ivar dump
+        // 1) 第 1 个联系人全继承链 ivar dump
         unsigned int idx = 0;
         for (id c in list) {
-            if (idx >= 2) break;
-            WRDumpIvars(c, [NSString stringWithFormat:@"c%u", idx]);
+            WRDumpIvars(c, @"c0");
             idx++;
+            break;
         }
-        // 2) 昵称含“谢”的联系人全 ivar dump
+        // 2) 昵称含“谢”的第一个联系人全继承链 ivar dump
+        unsigned int xieCount = 0;
         for (id c in list) {
             if (![c respondsToSelector:@selector(m_nsNickName)]) continue;
             id nick = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName));
             if ([nick isKindOfClass:[NSString class]] && [(NSString *)nick containsString:@"谢"]) {
-                WRDumpIvars(c, @"xie");
+                xieCount++;
+                if (xieCount == 1) WRDumpIvars(c, @"xie");
             }
         }
+        wrLog([NSString stringWithFormat:@"probe xie matches=%u", xieCount]);
         wrLog(@"=== PROBE END ===");
     }
 }
