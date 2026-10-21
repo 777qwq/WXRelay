@@ -267,3 +267,7 @@
 "TARGET_SECTION_APPS" = "Source app whitelist";
 "TARGET_APPS_PLACEHOLDER" = "Empty = all apps";
 "TARGET_APPS_FOOTER" = "Only notifications from matching apps are processed. Comma/space separated bundle-id fragments (contains match). e.g. mobilesms tencent.xin";
+
+"RULES_ROW_RELAY_ONLY" = "Relay only";
+"RULE_TEXT_REPLY_LABEL" = "Reply text (empty = relay original only)";
+"RULE_TEXT_REPLY_PLACEHOLDER" = "Placeholders: {app} {title} {body}";
