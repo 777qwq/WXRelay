@@ -40,21 +40,26 @@ static NSString *WRResolveTargetID(NSString *targetId) {
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr) return nil;
         // 8.0.50 实证：getContactByDisplayName 不存在，直接走列表精准扫描
-        // v2.3.5：备注名/昵称精准匹配，== 比较；唯一命中才用，多命中弃用
+        // v2.4.0 备注优先：第一轮备注精准（备注盖昵称，与微信显示语义一致）；零命中才扫昵称；撞名弃用
         if (![mgr respondsToSelector:@selector(getContactList:contactType:)]) return nil;
         id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
         if (![list isKindOfClass:[NSArray class]]) return nil;
-        id hit = nil; unsigned int hits = 0;
+        __block id hit = nil; __block unsigned int hits = 0;
+        // 第一轮：备注
         for (id c in list) {
             if (![c respondsToSelector:@selector(m_nsRemark)]) continue;
-            id remark = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark));
-            BOOL rm = [remark isKindOfClass:[NSString class]] && [(NSString *)remark isEqualToString:targetId];
-            id nick = [c respondsToSelector:@selector(m_nsNickName)] ? ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName)) : nil;
-            BOOL nm = [nick isKindOfClass:[NSString class]] && [(NSString *)nick isEqualToString:targetId];
-            if (rm || nm) {
-                hit = c; hits++;
-                if (hits > 1) break; // 多命中：撞名，弃用
+            id rem = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsRemark));
+            if ([rem isKindOfClass:[NSString class]] && [(NSString *)rem isEqualToString:targetId]) { hit = c; hits++; if (hits > 1) break; }
+        }
+        if (hits > 1) { wrLog([NSString stringWithFormat:@"resolve '%@' ambiguous remark (%u), skip", targetId, hits]); return nil; }
+        // 第二轮：备注零命中才扫昵称
+        if (hits == 0) {
+            for (id c in list) {
+                if (![c respondsToSelector:@selector(m_nsNickName)]) continue;
+                id nick = ((id(*)(id,SEL))objc_msgSend)(c, @selector(m_nsNickName));
+                if ([nick isKindOfClass:[NSString class]] && [(NSString *)nick isEqualToString:targetId]) { hit = c; hits++; if (hits > 1) break; }
             }
+            if (hits > 1) { wrLog([NSString stringWithFormat:@"resolve '%@' ambiguous nick (%u), skip", targetId, hits]); return nil; }
         }
         if (hits == 1 && hit && [hit respondsToSelector:@selector(m_nsUsrName)]) {
             id wxid = ((id(*)(id,SEL))objc_msgSend)(hit, @selector(m_nsUsrName));
@@ -63,7 +68,6 @@ static NSString *WRResolveTargetID(NSString *targetId) {
                 return wxid;
             }
         }
-        if (hits > 1) wrLog([NSString stringWithFormat:@"resolve '%@' ambiguous (%u), skip", targetId, hits]);
         return nil;
     } @catch (NSException *e) { return nil; }
 }
