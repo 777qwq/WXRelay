@@ -4,8 +4,9 @@
 #import "NFPRulesListEditorController.h"
 #import "../Shared/NFPreferences.h"
 #import "NFPAppRulesExportPickerController.h"
+#import "NFPAppInfoProvider.h"
 
-typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WPRowApps };
+typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WPRowApps, WPRowAppsBar };
 
 @interface NFPWeChatTargetEditorController ()
 @property (nonatomic, copy) NSDictionary *target;
@@ -19,6 +20,16 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
 @property (nonatomic, strong) UITextField *appsField;
 @end
 
+static void NAVLog(NSString *msg) {
+    @try {
+        NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
+        NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+    } @catch (NSException *e) { }
+}
+
 @implementation NFPWeChatTargetEditorController
 
 - (instancetype)initWithTarget:(NSDictionary *)target saveHandler:(void (^)(NSDictionary *))saveHandler {
@@ -31,6 +42,12 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
         _saveHandler = saveHandler;
     }
     return self;
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    NSUInteger depth = self.navigationController.viewControllers.count;
+    NAVLog([NSString stringWithFormat:@"editor disappear stack=%lu", (unsigned long)depth]);
 }
 
 - (void)viewDidLoad {
@@ -95,13 +112,38 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
     } else if (indexPath.section == WPRowExclude) {
         cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.excludeRules.count];
-    } else if (indexPath.section == WPRowApps) {
+    } else if (indexPath.section == WPRowApps && indexPath.row == 0) {
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         unsigned long n = self.appsList.count;
         cell.detailTextLabel.text = n ? [NSString stringWithFormat:@"%lu 个 App", n] : NFPLocalizedString(@"TARGET_APPS_PLACEHOLDER");
         cell.detailTextLabel.textColor = [UIColor secondaryLabelColor];
+    } else if (indexPath.section == WPRowApps && indexPath.row == 1) {
+        // v2.5.1 条形点击框：显示已勾选 App 名，点整条进选择页
+        cell.accessoryType = UITableViewCellAccessoryNone;
+        cell.textLabel.text = nil;
+        cell.detailTextLabel.text = nil;
+        for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
+        NSArray *names = [self displayNamesForAppsList];
+        NSString *bar = names.count ? [names componentsJoinedByString:@"、"] : NFPLocalizedString(@"TARGET_APPS_BAR_EMPTY");
+        if (names.count > 4) bar = [[names subarrayWithRange:NSMakeRange(0,4)] componentsJoinedByString:@"、"];
+        UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 30)];
+        l.text = bar;
+        l.font = [UIFont systemFontOfSize:13.0];
+        l.textColor = [UIColor secondaryLabelColor];
+        l.lineBreakMode = NSLineBreakByTruncatingTail;
+        [cell.contentView addSubview:l];
+        l.frame = CGRectMake(16, 5, 300, 30);
     }
     return cell;
+}
+
+- (NSArray *)displayNamesForAppsList {
+    NSMutableArray *out = [NSMutableArray array];
+    for (NSString *bid in self.appsList) {
+        NSString *n = [[NFPAppInfoProvider sharedProvider] displayNameForBundleIdentifier:bid];
+        [out addObject:n.length ? n : bid];
+    }
+    return out;
 }
 
 - (void)idChanged:(UITextField *)f { self.targetId = f.text ?: @""; }

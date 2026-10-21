@@ -492,6 +492,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
         NSString *text = nil;
         BOOL enabled = YES;
         NSString *scope = defaultScope;
+        id replyValue = nil;
 
         if ([rawRule isKindOfClass:[NSDictionary class]]) {
             NSDictionary *dictionary = rawRule;
@@ -503,6 +504,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
                 [dictionary[NFRuleEntryScopeKey] length] > 0) {
                 scope = dictionary[NFRuleEntryScopeKey];
             }
+            replyValue = dictionary[@"reply"] ?: dictionary[@"Reply"];
             if ([dictionary[NFRuleEntryIdentifierKey] isKindOfClass:[NSString class]] &&
                 [dictionary[NFRuleEntryIdentifierKey] length] > 0) {
                 identifier = dictionary[NFRuleEntryIdentifierKey];
@@ -516,10 +518,15 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
             continue;
         }
 
-        [entries addObject:[self ruleEntryWithText:text
-                                           enabled:enabled
-                                         identifier:identifier
-                                              scope:[self _normalizedRuleScope:scope defaultScope:defaultScope]]];
+        NSMutableDictionary *entry = [[self ruleEntryWithText:text
+                                                    enabled:enabled
+                                                  identifier:identifier
+                                                       scope:[self _normalizedRuleScope:scope defaultScope:defaultScope]] mutableCopy];
+        // v2.5.1：透传可选回复字段（否则每次 normalize 都会洗掉 reply）
+        if (replyValue != nil && [replyValue isKindOfClass:[NSString class]] && [(NSString *)replyValue length] > 0) {
+            entry[@"reply"] = replyValue;
+        }
+        [entries addObject:entry];
     }
 
     return entries;

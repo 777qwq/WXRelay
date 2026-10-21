@@ -178,21 +178,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/tunecc/No
         }];
     }
 
-    PSSpecifier *kaGroup = [PSSpecifier emptyGroupSpecifier];
-    [kaGroup setProperty:NFPLocalizedString(@"ROOT_KEEPALIVE_FOOTER") forKey:PSFooterTextGroupKey];
-    [specifiers addObject:kaGroup];
-
-    PSSpecifier *kaToggle = [PSSpecifier preferenceSpecifierNamed:NFPLocalizedString(@"ROOT_KEEPALIVE")
-                                                              target:self
-                                                                 set:@selector(setPreferenceValue:specifier:)
-                                                                 get:@selector(readPreferenceValue:)
-                                                              detail:nil
-                                                                 cell:PSSwitchCell
-                                                                 edit:nil];
-    [kaToggle setProperty:NFKeepAliveKey forKey:PSKeyNameKey];
-    [kaToggle setProperty:@YES forKey:PSDefaultValueKey];
-    [specifiers addObject:kaToggle];
-
     PSSpecifier *logGroup = [PSSpecifier emptyGroupSpecifier];
     [logGroup setProperty:NFPLocalizedString(@"ROOT_LOGGING_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:logGroup];
