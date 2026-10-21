@@ -23,7 +23,6 @@ extern NSString * const NFPrefShowTrollAppsKey;
 extern NSString * const NFWeChatForwardKey;
 extern NSString * const NFWeChatTargetsKey;
 extern NSString * const NFWeChatTargetsListKey;
-extern NSString * const NFKeepAliveKey;
 
 extern NSString * const NFRulesEnabledKey;
 extern NSString * const NFRulesContainsKey;

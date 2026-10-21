@@ -34,7 +34,7 @@ static NSString * const NFPIsTrollApplicationKey = @"isTrollApplication";
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _fetchQueue = dispatch_queue_create("com.tune.notificationfilter.applist", DISPATCH_QUEUE_SERIAL);
+        _fetchQueue = dispatch_queue_create("com.777qwq.wxrelaynf.applist", DISPATCH_QUEUE_SERIAL);
         _cachedApplications = @[];
         _applicationsByBundleIdentifier = @{};
         _iconCache = [[NSCache alloc] init];
