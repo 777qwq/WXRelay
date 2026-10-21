@@ -1,11 +1,11 @@
 /**
- * WXRelayNFSender — 微信端发送器（并入 WXRelayNF v1.7.0）
+ * WXRelaySender — 微信端发送器（并入 WXRelay v1.7.0）
  *
  * 职责（单一）：
  *   1. 监听 darwin com.mos.wxrelay.task + 启动补发
  *   2. 消费 wxrelay_tasks JSON（targets+text）→ 进程内私 API 直发（v2.3.0 去懒猫）
  *   3. 锁屏存活交给 AppData 真后台（v2.5.1 移除内置保活）
- * 匹配逻辑全部在 SB 端（WXRelayNF 主体），本进程不做任何规则判断。
+ * 匹配逻辑全部在 SB 端（WXRelay 主体），本进程不做任何规则判断。
  * 日志：微信沙盒 tmp/wxrelay.log
  */
 #import <UIKit/UIKit.h>
@@ -166,7 +166,7 @@ static void WRTaskNotifyCallback(CFNotificationCenterRef __unused c, void __unus
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
 __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
     @autoreleasepool {
-        wrLog(@"WXRelayNFSender ctor");
+        wrLog(@"WXRelaySender ctor");
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,
             CFNotificationSuspensionBehaviorDeliverImmediately);

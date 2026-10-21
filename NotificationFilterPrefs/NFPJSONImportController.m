@@ -26,7 +26,7 @@
     NSData *jsonData = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
     if (!jsonData) {
         if (error) {
-            *error = [NSError errorWithDomain:@"com.tune.notificationfilter.import"
+            *error = [NSError errorWithDomain:@"com.777qwq.wxrelay.import"
                                          code:1
                                      userInfo:@{NSLocalizedDescriptionKey: NFPLocalizedString(@"JSON_IMPORT_UTF8_ERROR")}];
         }
@@ -36,7 +36,7 @@
     id object = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:error];
     if (![object isKindOfClass:[NSDictionary class]]) {
         if (error && !*error) {
-            *error = [NSError errorWithDomain:@"com.tune.notificationfilter.import"
+            *error = [NSError errorWithDomain:@"com.777qwq.wxrelay.import"
                                          code:2
                                      userInfo:@{NSLocalizedDescriptionKey: NFPLocalizedString(@"JSON_IMPORT_ROOT_OBJECT_ERROR")}];
         }

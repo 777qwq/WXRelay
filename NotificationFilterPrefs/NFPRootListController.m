@@ -30,7 +30,7 @@ static NSString * const NFPAppRulesSpecifierID = @"ROOT_APP_RULES";
 static NSString * const NFPImportExportSpecifierID = @"ROOT_IMPORT_EXPORT";
 static NSString * const NFPFilteredLogsSpecifierID = @"ROOT_FILTERED_LOGS";
 static NSString * const NFPWeChatTargetsSpecifierID = @"ROOT_WECHAT_TARGETS";
-static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WXRelayNF";
+static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WXRelay";
 
 - (void)viewDidLoad {
     [super viewDidLoad];

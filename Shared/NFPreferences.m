@@ -16,8 +16,8 @@
   #endif
 #endif
 
-NSString * const NFPreferencesIdentifier = @"com.tune.notificationfilter";
-NSString * const NFPreferencesChangedDarwinNotification = @"com.tune.notificationfilter/preferences-changed";
+NSString * const NFPreferencesIdentifier = @"com.777qwq.wxrelay";
+NSString * const NFPreferencesChangedDarwinNotification = @"com.777qwq.wxrelay/preferences-changed";
 
 NSString * const NFEnabledKey = @"Enabled";
 NSString * const NFGlobalRulesEnabledKey = @"GlobalRulesEnabled";
@@ -649,7 +649,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
 }
 
 + (NSString *)logsFilePath {
-    return jbroot(@"/var/mobile/Library/Preferences/com.tune.notificationfilter.logs.plist");
+    return jbroot(@"/var/mobile/Library/Preferences/com.777qwq.wxrelay.logs.plist");
 }
 
 + (NSDictionary *)normalizedPreferencesFromDictionary:(NSDictionary *)rawPreferences {

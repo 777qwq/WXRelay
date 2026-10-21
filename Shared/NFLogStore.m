@@ -16,7 +16,7 @@ static NSString *NFNormalizedLogString(id value) {
     static dispatch_queue_t queue;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        queue = dispatch_queue_create("com.777qwq.wxrelaynf.logstore", DISPATCH_QUEUE_SERIAL);
+        queue = dispatch_queue_create("com.777qwq.wxrelay.logstore", DISPATCH_QUEUE_SERIAL);
     });
     return queue;
 }

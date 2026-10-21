@@ -934,12 +934,12 @@ static void NFPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 
 %ctor {
     @autoreleasepool {
-        NFPreferencesQueue = dispatch_queue_create("com.777qwq.wxrelaynf.preferences", DISPATCH_QUEUE_SERIAL);
-        NFBlockedActionQueue = dispatch_queue_create("com.777qwq.wxrelaynf.blocked-actions", DISPATCH_QUEUE_SERIAL);
+        NFPreferencesQueue = dispatch_queue_create("com.777qwq.wxrelay.preferences", DISPATCH_QUEUE_SERIAL);
+        NFBlockedActionQueue = dispatch_queue_create("com.777qwq.wxrelay.blocked-actions", DISPATCH_QUEUE_SERIAL);
         NFBlockedActionTimestamps = [NSMutableDictionary dictionary];
-        NFBlockedIdentityQueue = dispatch_queue_create("com.777qwq.wxrelaynf.blocked-identities", DISPATCH_QUEUE_SERIAL);
+        NFBlockedIdentityQueue = dispatch_queue_create("com.777qwq.wxrelay.blocked-identities", DISPATCH_QUEUE_SERIAL);
         NFBlockedIdentityCache = [NSMutableDictionary dictionary];
-        NFNotificationHistoryQueue = dispatch_queue_create("com.777qwq.wxrelaynf.history", DISPATCH_QUEUE_SERIAL);
+        NFNotificationHistoryQueue = dispatch_queue_create("com.777qwq.wxrelay.history", DISPATCH_QUEUE_SERIAL);
         NFNotificationHistoryEntriesByKey = [NSMutableDictionary dictionary];
         NFNotificationHistoryDataProviders = [NSMutableDictionary dictionary];
         NFReloadPreferences();

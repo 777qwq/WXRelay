@@ -1,7 +1,7 @@
 #import "NFPImportExportPayload.h"
 #import "../Shared/NFPreferences.h"
 
-NSString * const NFPPayloadErrorDomain = @"com.777qwq.wxrelaynf.import";
+NSString * const NFPPayloadErrorDomain = @"com.777qwq.wxrelay.import";
 
 NSString * const NFPPayloadTypeKey = @"type";
 NSString * const NFPPayloadTypeAppRules = @"app-rules";

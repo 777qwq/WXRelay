@@ -15,8 +15,8 @@
   #endif
 #endif
 
-NSString * const NFNotificationHistoryRefreshRequestNotification = @"com.tune.notificationfilter.history/refresh-request";
-NSString * const NFNotificationHistoryRefreshCompletedNotification = @"com.tune.notificationfilter.history/refresh-completed";
+NSString * const NFNotificationHistoryRefreshRequestNotification = @"com.777qwq.wxrelay.history/refresh-request";
+NSString * const NFNotificationHistoryRefreshCompletedNotification = @"com.777qwq.wxrelay.history/refresh-completed";
 NSString * const NFNotificationHistoryRequestIdentifierKey = @"requestID";
 NSString * const NFNotificationHistoryBundleIdentifierKey = @"bundleIdentifier";
 NSString * const NFNotificationHistoryLimitKey = @"limit";
@@ -48,13 +48,13 @@ static NSString *NFPreferencesScopedFilePath(NSString *filename) {
 }
 
 NSString *NFNotificationHistorySnapshotFilePath(void) {
-    return NFPreferencesScopedFilePath(@"com.tune.notificationfilter.history.plist");
+    return NFPreferencesScopedFilePath(@"com.777qwq.wxrelay.history.plist");
 }
 
 NSString *NFNotificationHistoryRefreshRequestFilePath(void) {
-    return NFPreferencesScopedFilePath(@"com.tune.notificationfilter.history-request.plist");
+    return NFPreferencesScopedFilePath(@"com.777qwq.wxrelay.history-request.plist");
 }
 
 NSString *NFNotificationHistoryRefreshStatusFilePath(void) {
-    return NFPreferencesScopedFilePath(@"com.tune.notificationfilter.history-status.plist");
+    return NFPreferencesScopedFilePath(@"com.777qwq.wxrelay.history-status.plist");
 }

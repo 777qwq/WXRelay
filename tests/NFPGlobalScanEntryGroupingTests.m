@@ -49,7 +49,7 @@ int main(void) {
                 NFLogBodyKey: @"内容"
             }
         ];
-        [snapshot writeToFile:[snapshotDirectory stringByAppendingPathComponent:@"com.tune.notificationfilter.history.plist"] atomically:YES];
+        [snapshot writeToFile:[snapshotDirectory stringByAppendingPathComponent:@"com.777qwq.wxrelay.history.plist"] atomically:YES];
 
         source = nil;
         error = nil;
@@ -59,7 +59,7 @@ int main(void) {
         NFAssert(error == nil, @"all-apps fetch should not report an error on a valid snapshot");
 
         // 非数组快照（损坏文件）：返回空，不崩溃。
-        [@{ @"unexpected": @"shape" } writeToFile:[snapshotDirectory stringByAppendingPathComponent:@"com.tune.notificationfilter.history.plist"] atomically:YES];
+        [@{ @"unexpected": @"shape" } writeToFile:[snapshotDirectory stringByAppendingPathComponent:@"com.777qwq.wxrelay.history.plist"] atomically:YES];
         error = nil;
         source = nil;
         NSArray<NSDictionary *> *corrupt = [NFPNotificationHistoryClient fetchAllAppsEntriesWithError:&error source:&source];

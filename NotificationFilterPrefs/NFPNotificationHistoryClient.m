@@ -22,7 +22,7 @@
     NSString *normalizedBundleIdentifier = [self _normalizedBundleIdentifier:bundleIdentifier];
     if (normalizedBundleIdentifier.length == 0) {
         if (error) {
-            *error = [NSError errorWithDomain:@"com.tune.notificationfilter.history"
+            *error = [NSError errorWithDomain:@"com.777qwq.wxrelay.history"
                                          code:10
                                      userInfo:@{NSLocalizedDescriptionKey: @"RULE_SCAN_SOURCE_FAILED"}];
         }
@@ -44,7 +44,7 @@
 
     if (![request writeToFile:requestPath atomically:YES]) {
         if (error) {
-            *error = [NSError errorWithDomain:@"com.tune.notificationfilter.history"
+            *error = [NSError errorWithDomain:@"com.777qwq.wxrelay.history"
                                          code:11
                                      userInfo:@{NSLocalizedDescriptionKey: @"RULE_SCAN_SOURCE_FAILED"}];
         }

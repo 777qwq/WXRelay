@@ -1,4 +1,4 @@
-"ROOT_TITLE" = "WXRelay NF";
+"ROOT_TITLE" = "WXRelay";
 "ROOT_TOGGLE_FOOTER" = "命中所配目标关键词的通知，原文立即转发给对应目标 id；原通知照常显示。每个目标可单独停用。";
 
 "RULES_LINK_CONTAINS" = "包含规则";
