@@ -301,3 +301,6 @@
 "TARGET_ACTION_BOTH" = "原文+预定";
 "TARGET_ACTION_FOOTER" = "转发原文 = 现有行为；发预定消息 = 命中后发送下方固定文本（原文不出门）；原文+预定 = 两先后各发一条。";
 "TARGET_REPLY_PLACEHOLDER" = "预定消息内容";
+
+"TARGET_ROW_EDIT_REPLY_RULES" = "编辑回复规则";
+"TARGET_REPLY_RULES_HINT" = "每行一条，格式：关键词=回复文本。命中哪个关键词就回复哪条；全不中用默认预定消息。";

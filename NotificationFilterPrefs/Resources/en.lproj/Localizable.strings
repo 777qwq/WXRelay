@@ -266,3 +266,6 @@
 "TARGET_ACTION_BOTH" = "Both";
 "TARGET_ACTION_FOOTER" = "Relay = forward original text (default); Reply = send the fixed text below (original stays local); Both = send original first, then the fixed text.";
 "TARGET_REPLY_PLACEHOLDER" = "Preset message content";
+
+"TARGET_ROW_EDIT_REPLY_RULES" = "Edit reply rules";
+"TARGET_REPLY_RULES_HINT" = "One per line: keyword=reply text. The matched keyword's reply is sent; if none match, the default preset message is used.";

@@ -164,13 +164,24 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
         BOOL enabled = target[@"enabled"] == nil ? YES : [target[@"enabled"] boolValue];
         if (!(tid.length && enabled && NFWeChatTargetMatches(target, record))) continue;
         // 动作三选一：relay 转发原文（默认）| reply 发预定消息 | both 双发
+        // v2.4.1：回复内容按关键词分发 replyRules=[{kw,text}]，通知原文含关键词→回对应文本；全不中用默认 reply
         NSString *action = [target[@"action"] isKindOfClass:[NSString class]] ? target[@"action"] : @"relay";
         NSString *reply = [target[@"reply"] isKindOfClass:[NSString class]] ? target[@"reply"] : @"";
+        NSString *pickedReply = reply;
+        id rules = target[@"replyRules"];
+        if ([rules isKindOfClass:[NSArray class]]) {
+            for (NSDictionary *r in rules) {
+                if (![r isKindOfClass:[NSDictionary class]]) continue;
+                NSString *kw = [r[@"kw"] isKindOfClass:[NSString class]] ? r[@"kw"] : @"";
+                NSString *rt = [r[@"text"] isKindOfClass:[NSString class]] ? r[@"text"] : @"";
+                if (kw.length && rt.length && [text containsString:kw]) { pickedReply = rt; break; }
+            }
+        }
         if ([action isEqualToString:@"reply"]) {
-            if (reply.length) [items addObject:@{ @"id": tid, @"text": reply }];
+            if (pickedReply.length) [items addObject:@{ @"id": tid, @"text": pickedReply }];
         } else if ([action isEqualToString:@"both"]) {
             [items addObject:@{ @"id": tid, @"text": text }];
-            if (reply.length) [items addObject:@{ @"id": tid, @"text": reply }];
+            if (pickedReply.length) [items addObject:@{ @"id": tid, @"text": pickedReply }];
         } else {
             [items addObject:@{ @"id": tid, @"text": text }];
         }

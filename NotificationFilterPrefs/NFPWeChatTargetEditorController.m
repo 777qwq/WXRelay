@@ -5,7 +5,7 @@
 #import "../Shared/NFPreferences.h"
 
 typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WPRowAction };
-typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
+typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyRules, WPSubReplyText };
 
 @interface NFPWeChatTargetEditorController ()
 @property (nonatomic, copy) NSDictionary *target;
@@ -16,6 +16,7 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
 @property (nonatomic, copy) void (^saveHandler)(NSDictionary *target);
 @property (nonatomic, strong) UITextField *idField;
 @property (nonatomic, copy) NSString *action;
+@property (nonatomic, copy) NSArray *replyRules;
 @property (nonatomic, copy) NSString *replyText;
 @property (nonatomic, strong) UITextField *replyField;
 @end
@@ -30,6 +31,7 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
         _excludeRules = [_target[@"exclude"] isKindOfClass:[NSArray class]] ? _target[@"exclude"] : @[];
         _action = [_target[@"action"] isKindOfClass:[NSString class]] ? _target[@"action"] : @"relay";
         _replyText = [_target[@"reply"] isKindOfClass:[NSString class]] ? _target[@"reply"] : @"";
+        _replyRules = [_target[@"replyRules"] isKindOfClass:[NSArray class]] ? _target[@"replyRules"] : @[];
         _saveHandler = saveHandler;
     }
     return self;
@@ -47,7 +49,7 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return (section == WPRowAction) ? 2 : 1;
+    return (section == WPRowAction) ? 3 : 1;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
@@ -101,6 +103,9 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
         [seg addTarget:self action:@selector(actionChanged:) forControlEvents:UIControlEventValueChanged];
         [cell.contentView addSubview:seg];
         seg.frame = CGRectMake(16, 8, 300, 30);
+    } else if (indexPath.section == WPRowAction && indexPath.row == WPSubReplyRules) {
+        cell.textLabel.text = NFPLocalizedString(@"TARGET_ROW_EDIT_REPLY_RULES");
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%lu 条", (unsigned long)self.replyRules.count];
     } else if (indexPath.section == WPRowAction && indexPath.row == WPSubReplyText) {
         cell.accessoryType = UITableViewCellAccessoryNone;
         for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
@@ -133,6 +138,35 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == WPRowID) { [self.idField becomeFirstResponder]; return; }
     __weak typeof(self) weakSelf = self;
+    if (indexPath.section == WPRowAction && indexPath.row == WPSubReplyRules) {
+        NSMutableString *flat = [NSMutableString string];
+        for (NSDictionary *r in self.replyRules) {
+            NSString *kw = [r[@"kw"] isKindOfClass:[NSString class]] ? r[@"kw"] : @"";
+            NSString *tx = [r[@"text"] isKindOfClass:[NSString class]] ? r[@"text"] : @"";
+            if (kw.length) [flat appendFormat:@"%@=%@\n", kw, tx];
+        }
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:NFPLocalizedString(@"TARGET_ROW_EDIT_REPLY_RULES") message:NFPLocalizedString(@"TARGET_REPLY_RULES_HINT") preferredStyle:UIAlertControllerStyleAlert];
+        [alert addTextFieldWithConfigurationHandler:^(UITextField *f) {
+            f.text = flat;
+            f.autocorrectionType = UITextAutocorrectionTypeNo;
+            f.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        }];
+        [alert addAction:[UIAlertAction actionWithTitle:NFPLocalizedString(@"COMMON_OK") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+            NSMutableArray *arr = [NSMutableArray array];
+            for (NSString *line in [alert.textFields.firstObject.text componentsSeparatedByString:@"\n"]) {
+                NSRange eq = [line rangeOfString:@"="];
+                if (eq.location == NSNotFound) continue;
+                NSString *kw = [[line substringToIndex:eq.location] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                NSString *tx = [[line substringFromIndex:NSMaxRange(eq)] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                if (kw.length && tx.length) [arr addObject:@{ @"kw": kw, @"text": tx }];
+            }
+            self.replyRules = arr;
+            [self.tableView reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:WPSubReplyRules inSection:WPRowAction]] withRowAnimation:UITableViewRowAnimationNone];
+        }]];
+        [alert addAction:[UIAlertAction actionWithTitle:NFPLocalizedString(@"COMMON_CANCEL") style:UIAlertActionStyleCancel handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil];
+        return;
+    }
     NFPRuleEditorKind kind = (indexPath.section == WPRowContains) ? NFPRuleEditorKindContains : NFPRuleEditorKindExclude;
     NSString *title = (indexPath.section == WPRowContains) ? NFPLocalizedString(@"TARGET_ROW_EDIT_CONTAINS") : NFPLocalizedString(@"TARGET_ROW_EDIT_EXCLUDE");
     NSArray *rules = (indexPath.section == WPRowContains) ? self.containsRules : self.excludeRules;
@@ -155,7 +189,7 @@ typedef NS_ENUM(NSInteger, WPSubRow) { WPSubAction = 0, WPSubReplyText };
         [self presentViewController:a animated:YES completion:nil];
         return;
     }
-    self.saveHandler(@{ @"id": tid, @"enabled": (self.target[@"enabled"] == nil ? @YES : self.target[@"enabled"]), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[], @"action": self.action ?: @"relay", @"reply": self.replyText ?: @"" });
+    self.saveHandler(@{ @"id": tid, @"enabled": (self.target[@"enabled"] == nil ? @YES : self.target[@"enabled"]), @"contains": self.containsRules ?: @[], @"exclude": self.excludeRules ?: @[], @"action": self.action ?: @"relay", @"reply": self.replyText ?: @"", @"replyRules": self.replyRules ?: @[] });
     [self.navigationController popViewControllerAnimated:YES];
 }
 
