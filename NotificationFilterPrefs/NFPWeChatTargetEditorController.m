@@ -31,18 +31,27 @@ static void NAVInstallPopProbe(void) {
         Method m = class_getInstanceMethod(cls, sel);
         if (!m) return;
         IMP oldImp = method_getImplementation(m);
-        IMP newImp = imp_implementationWithBlock(^(id selfVC, BOOL animated) {
-            NSMutableArray *frames = [NSMutableArray array];
-            NSArray *syms = [NSThread callStackSymbols];
-            for (NSUInteger i = 2; i < syms.count && i < 8; i++) [frames addObject:syms[i]];
-            NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
-            NSString *line = [NSString stringWithFormat:@"[%@] POP by:\n%@\n", [NSDate date], [frames componentsJoinedByString:@"\n"]];
+        IMP newImp = imp_implementationWithBlock(^(id selfVC, SEL _cmd, BOOL animated) {
             @try {
-                NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-                if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
-                if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+                UINavigationController *nav = (UINavigationController *)selfVC;
+                if (nav.viewControllers.count <= 1) {
+                    ((BOOL(*)(id,SEL,BOOL))oldImp)(selfVC, _cmd, animated);
+                    return;
+                }
+                NSMutableArray *frames = [NSMutableArray array];
+                NSArray *syms = [NSThread callStackSymbols];
+                for (NSUInteger i = 2; i < syms.count && i < 9; i++) [frames addObject:syms[i]];
+                NSString *line = [NSString stringWithFormat:@"[%@] POP by:\n%@\n", [NSDate date], [frames componentsJoinedByString:@"\n"]];
+                NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    @try {
+                        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+                        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+                        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+                    } @catch (NSException *e) { }
+                });
             } @catch (NSException *e) { }
-            ((BOOL(*)(id,SEL,BOOL))oldImp)(selfVC, sel, animated);
+            ((BOOL(*)(id,SEL,BOOL))oldImp)(selfVC, _cmd, animated);
         });
         method_setImplementation(m, newImp);
     });
