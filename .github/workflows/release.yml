@@ -22,11 +22,7 @@ jobs:
   build-and-release:
     runs-on: macos-14
     # v2.4.2 绕障：macos runner 僵死频发，4 路并行抽签，先成功者发布（publish 步骤自幂等）
-    strategy:
-      fail-fast: false
-      matrix:
-        replica: [1, 2, 3, 4]
-    name: build-and-release (replica-${{ matrix.replica }})
+
     env:
       RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
       RELEASE_REPO: ${{ github.repository }}
