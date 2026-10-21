@@ -113,7 +113,7 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
     if (indexPath.section == WPRowID) { [self.idField becomeFirstResponder]; return; }
     __weak typeof(self) weakSelf = self;
     if (indexPath.section == WPRowApps) {
-        NFPAppRulesExportPickerController *picker = [[NFPAppRulesExportPickerController alloc] initWithSelectedBundleIdentifiers:self.appsList selectionHandler:^(NSArray<NSString *> *selected) {
+        NFPAppRulesExportPickerController *picker = [[NFPAppRulesExportPickerController alloc] initWithTitle:NFPLocalizedString(@"APP_PICKER_TITLE") selectedBundleIdentifiers:self.appsList selectionHandler:^(NSArray<NSString *> *selected) {
             weakSelf.appsList = selected;
             [weakSelf.tableView reloadData];
         }];

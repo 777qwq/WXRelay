@@ -15,6 +15,7 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
 @property (nonatomic, copy) NSArray<NSDictionary *> *filteredApplications;
 @property (nonatomic, strong) UISearchController *searchController;
 @property (nonatomic, strong) UIBarButtonItem *doneButton;
+@property (nonatomic, copy, nullable) NSString *titleOverride;
 
 @end
 
@@ -32,6 +33,14 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
     return [[UIView alloc] initWithFrame:CGRectZero];
 }
+- (instancetype)initWithTitle:(NSString *)titleOverride
+             selectedBundleIdentifiers:(NSArray<NSString *> *)selectedBundleIdentifiers
+                  selectionHandler:(void (^)(NSArray<NSString *> *))selectionHandler {
+    self = [self initWithSelectedBundleIdentifiers:selectedBundleIdentifiers selectionHandler:selectionHandler];
+    if (self) { _titleOverride = [titleOverride copy]; }
+    return self;
+}
+
 - (instancetype)initWithSelectedBundleIdentifiers:(NSArray<NSString *> *)selectedBundleIdentifiers
                                  selectionHandler:(void (^)(NSArray<NSString *> *))selectionHandler {
     self = [super initWithStyle:UITableViewStyleInsetGrouped];
@@ -45,7 +54,7 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = NFPLocalizedString(@"APP_RULES_EXPORT_PICKER_TITLE");
+    self.title = self.titleOverride ?: NFPLocalizedString(@"APP_RULES_EXPORT_PICKER_TITLE");
     self.tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
     self.tableView.allowsMultipleSelectionDuringEditing = YES;
     self.tableView.allowsMultipleSelection = YES;
@@ -90,7 +99,7 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
     }];
 
     NSArray<NSDictionary *> *applications = [[NFPAppInfoProvider sharedProvider] sortedApplicationsWithConfiguredBundleIdentifiers:configuredBundleIdentifiers
-                                                                                                                  onlyConfiguredApps:YES
+                                                                                                                  onlyConfiguredApps:NO
                                                                                                                         showSystemApps:YES
                                                                                                                          showTrollApps:YES];
     self.applications = applications;
