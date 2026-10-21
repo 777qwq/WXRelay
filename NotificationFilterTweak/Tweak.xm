@@ -97,18 +97,6 @@ static BOOL NFEntryListMatches(NSArray *entries, NSString *scope, NFNotification
     return NO;
 }
 
-// 判定：排除优先（命中不转）；包含留空=全量；包含命中=转；包含未命中=不转
-static BOOL NFWeChatTargetMatches(NSDictionary *target, NFNotificationRecord *record) {
-    NSString *defaultScope = NFRuleScopeMessage;
-    NSArray *exclude = NFEnabledEntries(target[@"exclude"]);
-    if (exclude.count > 0 && NFEntryListMatches(exclude, defaultScope, record)) return NO; // 1. 排除一票否决
-    NSArray *contains = NFEnabledEntries(target[@"contains"]); // 4. 无规则/全未启用 = 留空
-    if (contains.count == 0) return YES;
-    return NFEntryListMatches(contains, defaultScope, record); // 2. 命中转 / 3. 未命中不转
-}
-
-static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result);
-
 // 转发去重：带 ID 的通知永久去重；无 ID 的按内容 30 秒窗口去重
 static NSMutableSet<NSString *> *NFForwardedIDs = nil;
 static NSMutableDictionary<NSString *, NSDate *> *NFForwardedTextMap = nil;
@@ -151,40 +139,70 @@ static BOOL NFMarkForwardedIfNew(NFNotificationRecord *record) {
     return isNew;
 }
 
+static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result);
+
+static NSString *NFExpandReply(NSString *tpl, NFNotificationRecord *record) {
+    if (tpl.length == 0) return tpl;
+    NSString *out = [tpl stringByReplacingOccurrencesOfString:@"{app}" withString:record.bundleIdentifier ?: @""];
+    out = [out stringByReplacingOccurrencesOfString:@"{title}" withString:record.title ?: @""];
+    out = [out stringByReplacingOccurrencesOfString:@"{body}" withString:(record.body ?: record.messageText) ?: @""];
+    return out;
+}
+
+// v2.4.3 目标级来源 App 白名单：扁平字符串（逗号/空格分隔，bundleID 包含匹配，留空=不限）
+static BOOL NFTargetAllowsApp(NSDictionary *target, NFNotificationRecord *record) {
+    NSString *apps = [target[@"apps"] isKindOfClass:[NSString class]] ? target[@"apps"] : @"";
+    if ([[apps stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] == 0) return YES;
+    NSString *bid = (record.bundleIdentifier ?: @"").lowercaseString;
+    if (bid.length == 0) return NO;
+    for (NSString *piece in [apps componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]) {
+        NSString *p = piece.lowercaseString;
+        for (NSString *seg in [p componentsSeparatedByString:@","]) {
+            NSString *q = [seg stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            if (q.length && [bid containsString:q]) return YES;
+        }
+    }
+    return NO;
+}
+
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     if (!NFMarkForwardedIfNew(record)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
     NSString *text = record.joinedText.length > 0 ? record.joinedText : record.messageText;
-    // v2.4.0：reply 模式不需要原文，原文为空不再整单拦截
-    NSMutableArray<NSDictionary *> *items = [NSMutableArray array]; // [{id, text}] v2.4.0：按目标动作生成待发文本
+    NSMutableArray<NSDictionary *> *items = [NSMutableArray array]; // [{id, text}]
     for (NSDictionary *target in targets) {
         if (![target isKindOfClass:[NSDictionary class]]) continue;
         NSString *tid = [target[@"id"] isKindOfClass:[NSString class]] ? target[@"id"] : @"";
         BOOL enabled = target[@"enabled"] == nil ? YES : [target[@"enabled"] boolValue];
-        if (!(tid.length && enabled && NFWeChatTargetMatches(target, record))) continue;
-        // 动作三选一：relay 转发原文（默认）| reply 发预定消息 | both 双发
-        // v2.4.1：回复内容按关键词分发 replyRules=[{kw,text}]，通知原文含关键词→回对应文本；全不中用默认 reply
-        NSString *action = [target[@"action"] isKindOfClass:[NSString class]] ? target[@"action"] : @"relay";
-        NSString *reply = [target[@"reply"] isKindOfClass:[NSString class]] ? target[@"reply"] : @"";
-        NSString *pickedReply = reply;
-        id rules = target[@"replyRules"];
-        if ([rules isKindOfClass:[NSArray class]]) {
-            for (NSDictionary *r in rules) {
-                if (![r isKindOfClass:[NSDictionary class]]) continue;
-                NSString *kw = [r[@"kw"] isKindOfClass:[NSString class]] ? r[@"kw"] : @"";
-                NSString *rt = [r[@"text"] isKindOfClass:[NSString class]] ? r[@"text"] : @"";
-                if (kw.length && rt.length && [text containsString:kw]) { pickedReply = rt; break; }
+        if (!(tid.length && enabled)) continue;
+        // v2.4.3 目标级来源 App 白名单
+        if (!NFTargetAllowsApp(target, record)) continue;
+        NSArray *exclude = NFEnabledEntries(target[@"exclude"]);
+        if (exclude.count > 0 && NFEntryListMatches(exclude, NFRuleScopeMessage, record)) continue; // 排除一票否决
+        NSArray *contains = NFEnabledEntries(target[@"contains"]);
+        if (contains.count == 0) {
+            // 留空=全量转发（纯转发，无回复）
+            if (text.length) [items addObject:@{ @"id": tid, @"text": text }];
+            continue;
+        }
+        // 逐规则判定：命中的规则若有 reply → 转发原文一次 + 各发一条回复（占位符展开）
+        __block BOOL anyHit = NO; __block BOOL forwarded = NO;
+        for (NSDictionary *entry in contains) {
+            NSString *ruleText = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"text"] isKindOfClass:[NSString class]] ? entry[@"text"] : @"") : (NSString *)entry;
+            if (ruleText.length == 0) continue;
+            NSString *entryScope = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"scope"] isKindOfClass:[NSString class]] ? entry[@"scope"] : @"") : @"";
+            NSString *haystack = NFTextForScope(entryScope.length ? entryScope : NFRuleScopeMessage, record);
+            if ([haystack rangeOfString:ruleText].location == NSNotFound) continue;
+            anyHit = YES;
+            if (!forwarded && text.length) { [items addObject:@{ @"id": tid, @"text": text }]; forwarded = YES; }
+            NSString *reply = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"reply"] isKindOfClass:[NSString class]] ? entry[@"reply"] : @"") : @"";
+            if ([[reply stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0) {
+                NSString *expanded = NFExpandReply(reply, record);
+                if (expanded.length) [items addObject:@{ @"id": tid, @"text": expanded }];
             }
         }
-        if ([action isEqualToString:@"reply"]) {
-            if (pickedReply.length) [items addObject:@{ @"id": tid, @"text": pickedReply }];
-        } else if ([action isEqualToString:@"both"]) {
-            [items addObject:@{ @"id": tid, @"text": text }];
-            if (pickedReply.length) [items addObject:@{ @"id": tid, @"text": pickedReply }];
-        } else {
-            [items addObject:@{ @"id": tid, @"text": text }];
-        }
+        if (!anyHit) continue;
     }
     if (items.count == 0) return;
     @autoreleasepool {

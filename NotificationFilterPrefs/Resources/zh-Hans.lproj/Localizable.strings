@@ -295,12 +295,10 @@
 
 "RULE_WHITELIST_DEFAULT_TITLE" = "排除默认转发";
 
-"TARGET_SECTION_ACTION" = "转发动作";
-"TARGET_ACTION_RELAY" = "转发原文";
-"TARGET_ACTION_REPLY" = "发预定消息";
-"TARGET_ACTION_BOTH" = "原文+预定";
-"TARGET_ACTION_FOOTER" = "转发原文 = 现有行为；发预定消息 = 命中后发送下方固定文本（原文不出门）；原文+预定 = 两先后各发一条。";
-"TARGET_REPLY_PLACEHOLDER" = "预定消息内容";
 
-"TARGET_ROW_EDIT_REPLY_RULES" = "编辑回复规则";
-"TARGET_REPLY_RULES_HINT" = "每行一条，格式：关键词=回复文本。命中哪个关键词就回复哪条；全不中用默认预定消息。";
+
+"TARGET_ROW_EDIT_RULES" = "编辑转发规则";
+"TARGET_RULES_HINT" = "每行一条：关键词=回复文本。回复可空=只转发原文；填了=转发原文+回复该文本。支持占位符 {app} {title} {body}。留空整区=全量转发。";
+"TARGET_SECTION_APPS" = "来源 App 白名单";
+"TARGET_APPS_PLACEHOLDER" = "留空=全部 App";
+"TARGET_APPS_FOOTER" = "只转发来源匹配的通知。填 App 包名片段，逗号或空格分隔，包含匹配即命中。例：mobilesms tencent.xin。";

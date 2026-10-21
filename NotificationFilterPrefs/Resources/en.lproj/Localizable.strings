@@ -260,12 +260,10 @@
 "TARGET_ID_PLACEHOLDER" = "wxid_xxx / group@chatroom / filehelper / remark name";
 "TARGET_ID_FOOTER" = "Messages are forwarded to this WeChat ID. Fill in wxid, group id (ending with @chatroom), filehelper, or the contact's remark/nickname (auto-resolved at send time).";
 
-"TARGET_SECTION_ACTION" = "Action";
-"TARGET_ACTION_RELAY" = "Relay";
-"TARGET_ACTION_REPLY" = "Reply";
-"TARGET_ACTION_BOTH" = "Both";
-"TARGET_ACTION_FOOTER" = "Relay = forward original text (default); Reply = send the fixed text below (original stays local); Both = send original first, then the fixed text.";
-"TARGET_REPLY_PLACEHOLDER" = "Preset message content";
 
-"TARGET_ROW_EDIT_REPLY_RULES" = "Edit reply rules";
-"TARGET_REPLY_RULES_HINT" = "One per line: keyword=reply text. The matched keyword's reply is sent; if none match, the default preset message is used.";
+
+"TARGET_ROW_EDIT_RULES" = "Edit forward rules";
+"TARGET_RULES_HINT" = "One per line: keyword=reply. Empty reply = relay original only; filled = relay original + send reply. Placeholders: {app} {title} {body}. Leave whole section empty = relay everything.";
+"TARGET_SECTION_APPS" = "Source app whitelist";
+"TARGET_APPS_PLACEHOLDER" = "Empty = all apps";
+"TARGET_APPS_FOOTER" = "Only notifications from matching apps are processed. Comma/space separated bundle-id fragments (contains match). e.g. mobilesms tencent.xin";
