@@ -141,6 +141,8 @@ static BOOL NFMarkForwardedIfNew(NFNotificationRecord *record) {
 
 static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *result);
 
+static void NFReloadPreferences(void);
+
 static NSString *NFExpandReply(NSString *tpl, NFNotificationRecord *record) {
     if (tpl.length == 0) return tpl;
     NSString *out = [tpl stringByReplacingOccurrencesOfString:@"{app}" withString:record.bundleIdentifier ?: @""];
@@ -162,6 +164,8 @@ static BOOL NFTargetAllowsApp(NSDictionary *target, NFNotificationRecord *record
 }
 
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
+    // v2.4.9：转发前强制读最新 prefs（锁屏 darwin 排队可能跳过更新）
+    NFReloadPreferences();
     if (!NFMarkForwardedIfNew(record)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;

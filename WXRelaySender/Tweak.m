@@ -14,6 +14,8 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 
+static void WRStartFlushLoop(void); // v2.4.9
+
 static void wrLog(NSString *msg) {
     @try {
         static NSDateFormatter *f = nil;
@@ -229,6 +231,20 @@ __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
             WRFlushTasks(); // 启动补发积压
             if (WRKeepAliveEnabled()) WRSetupKeepAlive();
             else wrLog(@"keepAlive off (NF cfg)");
+            // v2.4.9 周期兜底 flush：锁屏时 darwin 通知排队，定时轮询补位
+            WRStartFlushLoop();
         });
     }
+}
+
+static void WRStartFlushLoop(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            WRFlushTasks();
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                WRStartFlushLoop();
+            });
+        });
+    });
 }

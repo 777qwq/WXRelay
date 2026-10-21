@@ -77,6 +77,10 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
     self.navigationItem.rightBarButtonItem = self.doneButton;
 
     [self reloadApplications];
+    // v2.4.10：照原壳无条件刷新（缓存可能为空或过期）
+    [[NFPAppInfoProvider sharedProvider] refreshApplicationsWithCompletion:^(NSArray *applications) {
+        [self reloadApplications];
+    }];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -159,6 +163,8 @@ static NSString * const NFPExportPickerDisplayNameKey = @"displayName";
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    // v2.4.9：来源白名单场景用新文案
+    if (self.titleOverride) return NFPLocalizedString(@"TARGET_APPS_FOOTER");
     return NFPLocalizedString(@"APP_RULES_EXPORT_PICKER_FOOTER");
 }
 
