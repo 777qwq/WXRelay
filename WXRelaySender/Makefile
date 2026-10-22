@@ -5,6 +5,6 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = WXRelaySender
 WXRelaySender_FILES = Tweak.m
-WXRelaySender_FRAMEWORKS = UIKit Foundation AVFoundation CoreFoundation
+WXRelaySender_FRAMEWORKS = UIKit Foundation AVFoundation CoreFoundation UserNotifications
 
 include $(THEOS_MAKE_PATH)/tweak.mk
