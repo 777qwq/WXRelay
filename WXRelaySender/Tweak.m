@@ -174,42 +174,18 @@ static void WRTaskNotifyCallback(CFNotificationCenterRef __unused c, void __unus
 
 // ===== v2.8.0 模块B：消息源（AsyncOnAddMsg 全覆盖）=====
 // 管线：微信收消息 → 组 record JSON → 落 wxrelay_msgs + darwin 呼 SB → SB 匹配 → 现有任务通道回微信
-// v0.3 banner: post local notification when in background
-static BOOL WRBannerAuthAsked = NO;
-
-static void WRBannerRequestAuth(void) {
-    Class c = objc_getClass("UNUserNotificationCenter");
-    if (!c || WRBannerAuthAsked) return;
-    WRBannerAuthAsked = YES;
-    @try {
-        id center = ((id(*)(id,SEL))objc_msgSend)(c, @selector(currentNotificationCenter));
-        if (!center) return;
-        void (^block)(BOOL, NSError *) = ^(BOOL granted, NSError *err) {
-            wrLog([NSString stringWithFormat:@"banner auth=%d", granted]);
-        };
-        ((void(*)(id,SEL,unsigned long long,id))objc_msgSend)(center,
-            @selector(requestAuthorizationWithOptions:completionHandler:),
-            0x01 | 0x02 | 0x04, block);
-    } @catch (NSException *e) { }
-}
-
+// v0.3 banner: post local notification when in background (UILocalNotification)
 static void WRPostBanner(NSString *title, NSString *body) {
     @try {
         if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive) return;
-        Class c = objc_getClass("UNUserNotificationCenter");
-        if (!c) return;
-        id center = ((id(*)(id,SEL))objc_msgSend)(c, @selector(currentNotificationCenter));
-        if (!center) return;
-        Class cc = objc_getClass("UNMutableNotificationContent");
-        if (!cc) return;
-        id content = [[cc alloc] init];
-        ((void(*)(id,SEL,id))objc_msgSend)(content, @selector(setTitle:), title ?: @"");
-        if (body.length) ((void(*)(id,SEL,id))objc_msgSend)(content, @selector(setBody:), body);
-        id req = [[objc_getClass("UNNotificationRequest") alloc]
-            initWithIdentifier:[NSUUID UUID].UUIDString content:content trigger:nil];
-        ((void(*)(id,SEL,id,id,id))objc_msgSend)(center,
-            @selector(addNotificationRequest:withCompletionHandler:), req, nil);
-        [req autorelease];
+        UILocalNotification *ln = [[UILocalNotification alloc] init];
+        ln.fireDate = [NSDate date];
+        ln.timeZone = [NSTimeZone defaultTimeZone];
+        if (title.length) ln.alertTitle = title;
+        if (body.length) ln.alertBody = body;
+        ln.hasAction = YES;
+        [[UIApplication sharedApplication] scheduleLocalNotification:ln];
+        [ln release];
     } @catch (NSException *e) {
         wrLog([NSString stringWithFormat:@"banner EXC %@", e.name]);
     }
@@ -345,20 +321,16 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         if (WRSelfWxid.length && ([fromUsr isEqualToString:WRSelfWxid]
             || (actualUsr.length && [actualUsr isEqualToString:WRSelfWxid]))) return;
         BOOL isGroup = [fromUsr hasSuffix:@"@chatroom"];
-        // v0.3 banner: background incoming message
-        {
-            NSString *bt = chatName ?: fromUsr;
-            if (isGroup) {
-                NSString *spk = WRContactDisplayName(actualUsr ?: @"");
-                if (spk.length) bt = [NSString stringWithFormat:@"%@ - %@", bt, spk];
-            }
-            WRBannerRequestAuth();
-            WRPostBanner(bt, content);
-        }
         NSString *chatName = WRContactDisplayName(fromUsr);
         NSString *speaker = isGroup ? WRContactDisplayName(actualUsr ?: @"") : nil;
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
+        // v0.3 banner: background incoming message
+        {
+            NSString *bt = title;
+            if (isGroup && subtitle.length) bt = [NSString stringWithFormat:@"%@ - %@", bt, subtitle];
+            WRPostBanner(bt, content);
+        }
         NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
         if (msgID.length == 0) msgID = [NSString stringWithFormat:@"%u-%lu", (unsigned int)msgType, (unsigned long)[content hash]];
         WRSpoolMsgRecord(@{
@@ -417,7 +389,6 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelaySender ctor");
         WRInitLastSentStore();
-        WRBannerRequestAuth();
         WRInstallMsgSourceHook();
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
