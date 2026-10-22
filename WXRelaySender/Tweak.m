@@ -174,6 +174,10 @@ static void WRTaskNotifyCallback(CFNotificationCenterRef __unused c, void __unus
 
 // ===== v2.8.0 模块B：消息源（AsyncOnAddMsg 全覆盖）=====
 // 管线：微信收消息 → 组 record JSON → 落 wxrelay_msgs + darwin 呼 SB → SB 匹配 → 现有任务通道回微信
+static NSString *WRStr(id v) {
+    return [v isKindOfClass:[NSString class]] ? v : nil;
+}
+
 static NSString *WRContactDisplayName(NSString *wxid) {
     if (wxid.length == 0) return wxid;
     @try {
@@ -190,10 +194,10 @@ static NSString *WRContactDisplayName(NSString *wxid) {
         __block NSString *remark = nil, *nick = nil;
         for (id c in list) {
             if (![c respondsToSelector:@selector(m_nsUsrName)]) continue;
-            NSString *u = [c valueForKey:@"m_nsUsrName"];
+            NSString *u = WRStr([c valueForKey:@"m_nsUsrName"]);
             if (![u isEqualToString:wxid]) continue;
-            if ([c respondsToSelector:@selector(m_nsRemark)]) remark = [c valueForKey:@"m_nsRemark"];
-            if ([c respondsToSelector:@selector(m_nsNickName)]) nick = [c valueForKey:@"m_nsNickName"];
+            if ([c respondsToSelector:@selector(m_nsRemark)]) remark = WRStr([c valueForKey:@"m_nsRemark"]);
+            if ([c respondsToSelector:@selector(m_nsNickName)]) nick = WRStr([c valueForKey:@"m_nsNickName"]);
             break;
         }
         NSString *name = remark.length ? remark : (nick.length ? nick : nil);
@@ -287,14 +291,14 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         unsigned int msgType = 0;
         if ([wrap respondsToSelector:@selector(m_uiMessageType)]) msgType = ((unsigned int(*)(id,SEL))objc_msgSend)(wrap, @selector(m_uiMessageType));
         if (msgType != 1) return;
-        NSString *content = [wrap respondsToSelector:@selector(m_nsContent)] ? [wrap valueForKey:@"m_nsContent"] : nil;
+        NSString *content = [wrap respondsToSelector:@selector(m_nsContent)] ? WRStr([wrap valueForKey:@"m_nsContent"]) : nil;
         if (content.length == 0) return;
         // 自发消息防线：官方 isSender 位 + 已发文本 60 秒回显双保险，杜绝回环
         BOOL isSender = NO;
         if ([wrap respondsToSelector:@selector(m_bIsSender)]) isSender = ((BOOL(*)(id,SEL))objc_msgSend)(wrap, @selector(m_bIsSender));
         if (isSender || WRTextWasRecentlySent(content)) return;
-        NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? [wrap valueForKey:@"m_nsFromUsr"] : nil;
-        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsActualUsr)] ? [wrap valueForKey:@"m_nsActualUsr"] : nil;
+        NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? WRStr([wrap valueForKey:@"m_nsFromUsr"]) : nil;
+        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsActualUsr)] ? WRStr([wrap valueForKey:@"m_nsActualUsr"]) : nil;
         if (fromUsr.length == 0) return;
         // v2.8.7 自身消息防线：来源 wxid 是自己（单聊直发 / 群聊 actualUsr）一律跳过
         if (WRSelfWxid.length && ([fromUsr isEqualToString:WRSelfWxid]
@@ -304,7 +308,7 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         NSString *speaker = isGroup ? WRContactDisplayName(actualUsr ?: @"") : nil;
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
-        NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? [wrap valueForKey:@"m_nsMsgId"] : nil;
+        NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
         if (msgID.length == 0) msgID = [NSString stringWithFormat:@"%u-%lu", (unsigned int)msgType, (unsigned long)[content hash]];
         WRSpoolMsgRecord(@{
             @"bid": @"com.tencent.xin",
