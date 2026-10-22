@@ -211,9 +211,16 @@ static void WRWriteMsgSourceFlag(void) {
 static NSMutableSet<NSString *> *WRLastSentTexts = nil;
 static pthread_mutex_t WRLastSentMutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void WRNoteSentText(NSString *text) {
+// v2.8.6 ctor 急切初始化：静态强引用建一次永不重赋（防 over-release 僵尸）
+static void WRInitLastSentStore(void) {
     pthread_mutex_lock(&WRLastSentMutex);
-    if (!WRLastSentTexts) WRLastSentTexts = [NSMutableSet set];
+    if (!WRLastSentTexts) WRLastSentTexts = [[NSMutableSet alloc] init];
+    pthread_mutex_unlock(&WRLastSentMutex);
+}
+
+static void WRNoteSentText(NSString *text) {
+    if (!WRLastSentTexts) WRInitLastSentStore();
+    pthread_mutex_lock(&WRLastSentMutex);
     [WRLastSentTexts addObject:text ?: @""];
     if (WRLastSentTexts.count > 64) {
         NSString *oldest = [WRLastSentTexts anyObject];
@@ -224,8 +231,9 @@ static void WRNoteSentText(NSString *text) {
 
 static BOOL WRTextWasRecentlySent(NSString *text) {
     if (!text.length) return NO;
+    if (!WRLastSentTexts) WRInitLastSentStore();
     pthread_mutex_lock(&WRLastSentMutex);
-    BOOL hit = WRLastSentTexts && [WRLastSentTexts containsObject:text];
+    BOOL hit = [WRLastSentTexts containsObject:text];
     pthread_mutex_unlock(&WRLastSentMutex);
     return hit;
 }
@@ -333,6 +341,7 @@ static void WRInstallMsgSourceHook(void) {
 __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelaySender ctor");
+        WRInitLastSentStore();
         WRInstallMsgSourceHook();
         WRWriteMsgSourceFlag();
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
