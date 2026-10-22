@@ -101,7 +101,7 @@ static void NAVLog(NSString *msg) {
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 4; }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return (section == WPRowApps) ? 2 : 1;
+    return (section == WPRowApps && self.appsList.count) ? 2 : 1;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
@@ -119,14 +119,6 @@ static void NAVLog(NSString *msg) {
     }
     if (section == WPRowApps) return NFPLocalizedString(@"TARGET_APPS_FOOTER");
     return NFPLocalizedString(@"TARGET_JUDGE_FOOTER");
-}
-
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section == WPRowApps && indexPath.row == 1) {
-        NSArray *names = [self displayNamesForAppsList];
-        return names.count ? 46.0 : 0.0;
-    }
-    return UITableViewAutomaticDimension;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -167,15 +159,11 @@ static void NAVLog(NSString *msg) {
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     } else if (indexPath.section == WPRowApps && indexPath.row == 1) {
         // v2.5.6 条形框：空内容隐藏整行；App 名默认色
-        NSArray *names = [self displayNamesForAppsList];
-        if (names.count == 0) {
-            return [tableView dequeueReusableCellWithIdentifier:@"wrow-text"] ?: [[UITableViewCell alloc] init];
-        }
         cell.accessoryType = UITableViewCellAccessoryNone;
         cell.textLabel.text = nil;
         cell.detailTextLabel.text = nil;
         for (UIView *sub in [cell.contentView subviews]) [sub removeFromSuperview];
-        NSString *bar = names.count > 4 ? [[names subarrayWithRange:NSMakeRange(0,4)] componentsJoinedByString:@"、"] : [names componentsJoinedByString:@"、"];
+        NSString *bar = [self displayNamesForAppsList].count > 4 ? [[[self displayNamesForAppsList] subarrayWithRange:NSMakeRange(0,4)] componentsJoinedByString:@"、"] : [[self displayNamesForAppsList] componentsJoinedByString:@"、"];
         UILabel *l = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, 320, 30)];
         l.text = bar;
         l.font = [UIFont systemFontOfSize:14.0];
@@ -204,6 +192,7 @@ static void NAVLog(NSString *msg) {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == WPRowID) { [self.idField becomeFirstResponder]; return; }
     __weak typeof(self) weakSelf = self;
+    if (indexPath.section == WPRowApps && indexPath.row == 1) return; // 条形框行不可点
     if (indexPath.section == WPRowApps && indexPath.row == 0) {
         NFPAppRulesExportPickerController *picker = [[NFPAppRulesExportPickerController alloc] initWithTitle:NFPLocalizedString(@"APP_PICKER_TITLE") selectedBundleIdentifiers:self.appsList selectionHandler:^(NSArray<NSString *> *selected) {
             weakSelf.appsList = selected;

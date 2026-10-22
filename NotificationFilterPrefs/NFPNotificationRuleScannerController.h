@@ -1,5 +1,5 @@
 #import <UIKit/UIKit.h>
-#import "NFPMultilineRulesEditorController.h"
+#import "NFPRuleEditorKind.h"
 #import "NFPNotificationRuleTokenPickerController.h"
 
 NS_ASSUME_NONNULL_BEGIN

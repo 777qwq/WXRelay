@@ -23,7 +23,6 @@ static void NAVLog(NSString *msg) {
 @implementation NFPRootListController
 
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
-static NSString * const NFPGlobalRulesSpecifierID = @"ROOT_GLOBAL_RULES";
 static NSString * const NFPFilteredLogsSpecifierID = @"ROOT_FILTERED_LOGS";
 static NSString * const NFPWeChatTargetsSpecifierID = @"ROOT_WECHAT_TARGETS";
 static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WXRelay";
@@ -55,15 +54,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
 
 - (void)navAppBackground { NAVLog(@"app BACKGROUND while root"); }
 - (void)navAppForeground { NAVLog(@"app FOREGROUND"); }
-
-- (NSString *)globalRulesSummary {
-    NSDictionary *preferences = [NFPreferences loadPreferences];
-    if (![preferences[NFGlobalRulesEnabledKey] boolValue]) {
-        return NFPLocalizedString(@"ROOT_SUMMARY_OFF");
-    }
-    return [NSString stringWithFormat:NFPLocalizedString(@"ROOT_SUMMARY_RULE_COUNT_FORMAT"),
-                                      (unsigned long)[NFPreferences globalRuleEntryCountFromPreferences:preferences]];
-}
 
 - (NSArray<NSDictionary *> *)targetListFromPrefs {
     NSDictionary *prefs = [NFPreferences loadPreferences];
@@ -308,6 +298,9 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
         }
         [sw addTarget:self action:@selector(targetSwitchChanged:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = sw;
+        cell.detailTextLabel.font = [UIFont systemFontOfSize:11.0];
+        cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
+        cell.detailTextLabel.minimumScaleFactor = 0.75;
     } else if ([cell.accessoryView isKindOfClass:[UISwitch class]]
                && [cell.accessoryView.accessibilityIdentifier isEqualToString:@"wxrelay-target-switch"]) {
         cell.accessoryView = nil; // 只清我们自己挂的开关，别动 PSSwitchCell 的系统开关

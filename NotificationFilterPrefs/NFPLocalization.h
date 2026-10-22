@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-#import "NFPMultilineRulesEditorController.h"
+#import "NFPRuleEditorKind.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
