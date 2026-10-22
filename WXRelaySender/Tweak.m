@@ -217,7 +217,7 @@ static void WRResolveSelfWxid(void) {
         if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return;
         id me = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getSelfContact));
         if ([me respondsToSelector:@selector(m_nsUsrName)])
-            WRSelfWxid = [me valueForKey:@"m_nsUsrName"];
+            WRSelfWxid = [[me valueForKey:@"m_nsUsrName"] retain]; // MRC：静态全局必须 retain
         wrLog([NSString stringWithFormat:@"B: self wxid=%@", WRSelfWxid]);
     } @catch (NSException *e) { }
 }
@@ -331,7 +331,7 @@ static BOOL WRHookMsgSourceSelector(Class CMessageMgr, NSString *name) {
     if (WRAsyncOnAddMsgOrig) return YES; // 已挂在别的候选上
     WRAsyncOnAddMsgOrig = method_getImplementation(m);
     method_setImplementation(m, (IMP)WRAsyncOnAddMsgHook);
-    WRHookedSelectorName = name;
+    WRHookedSelectorName = [name retain]; // MRC 同上
     wrLog([NSString stringWithFormat:@"B: hooked %@", name]);
     return YES;
 }
