@@ -1,27 +1,27 @@
 #import <Foundation/Foundation.h>
-#import "../Shared/NFLogStore.h"
+#import "../Shared/WXLogStore.h"
 
-@interface NFPreferences : NSObject
+@interface WXPreferences : NSObject
 + (NSDictionary *)loadPreferences;
 + (NSInteger)normalizedLogEntryLimit:(id)value;
 + (NSString *)logsFilePath;
 @end
 
-NSString * const NFLogEntryLimitKey = @"LogEntryLimit";
-NSString * const NFLogIdentifierKey = @"id";
-NSString * const NFLogTimestampKey = @"timestamp";
-NSString * const NFLogBundleIdentifierKey = @"bundleID";
-NSString * const NFLogSectionIDKey = @"sectionID";
-NSString * const NFLogBulletinIDKey = @"bulletinID";
-NSString * const NFLogRecordIDKey = @"recordID";
-NSString * const NFLogPublisherBulletinIDKey = @"publisherBulletinID";
-NSString * const NFLogMatchedScopeKey = @"matchedScope";
-NSString * const NFLogMatchedPatternKey = @"matchedPattern";
+NSString * const WXLogEntryLimitKey = @"LogEntryLimit";
+NSString * const WXLogIdentifierKey = @"id";
+NSString * const WXLogTimestampKey = @"timestamp";
+NSString * const WXLogBundleIdentifierKey = @"bundleID";
+NSString * const WXLogSectionIDKey = @"sectionID";
+NSString * const WXLogBulletinIDKey = @"bulletinID";
+NSString * const WXLogRecordIDKey = @"recordID";
+NSString * const WXLogPublisherBulletinIDKey = @"publisherBulletinID";
+NSString * const WXLogMatchedScopeKey = @"matchedScope";
+NSString * const WXLogMatchedPatternKey = @"matchedPattern";
 
-@implementation NFPreferences
+@implementation WXPreferences
 
 + (NSDictionary *)loadPreferences {
-    return @{ NFLogEntryLimitKey: @500 };
+    return @{ WXLogEntryLimitKey: @500 };
 }
 
 + (NSInteger)normalizedLogEntryLimit:(id)value {
@@ -38,39 +38,39 @@ NSString * const NFLogMatchedPatternKey = @"matchedPattern";
 
 @end
 
-@interface NFLogStore (Testing)
+@interface WXLogStore (Testing)
 + (dispatch_queue_t)_logQueue;
 + (void)_flushLockedForTesting;
 @end
 
-static NSDictionary *NFMakeEntry(NSString *identifierSuffix) {
+static NSDictionary *WXMakeEntry(NSString *identifierSuffix) {
     return @{
-        NFLogIdentifierKey: [NSString stringWithFormat:@"entry-%@", identifierSuffix],
-        NFLogTimestampKey: @1000.0,
-        NFLogBundleIdentifierKey: @"com.example.messages",
-        NFLogSectionIDKey: @"com.example.messages",
-        NFLogRecordIDKey: [NSString stringWithFormat:@"record-%@", identifierSuffix],
-        NFLogPublisherBulletinIDKey: [NSString stringWithFormat:@"record-%@", identifierSuffix],
-        NFLogMatchedScopeKey: @"app:com.example.messages",
-        NFLogMatchedPatternKey: @"match-pattern"
+        WXLogIdentifierKey: [NSString stringWithFormat:@"entry-%@", identifierSuffix],
+        WXLogTimestampKey: @1000.0,
+        WXLogBundleIdentifierKey: @"com.example.messages",
+        WXLogSectionIDKey: @"com.example.messages",
+        WXLogRecordIDKey: [NSString stringWithFormat:@"record-%@", identifierSuffix],
+        WXLogPublisherBulletinIDKey: [NSString stringWithFormat:@"record-%@", identifierSuffix],
+        WXLogMatchedScopeKey: @"app:com.example.messages",
+        WXLogMatchedPatternKey: @"match-pattern"
     };
 }
 
 // 带当前时间戳的条目。clear-state 机制会把「同 bundle 且 timestamp <= clearedAt」的条目视为已清理，
 // 因此验证 clear 之后新通知能否落盘时，必须用当前/未来时间戳，避免被 clear-state 过滤（与
-// NFLogStoreClearTests.m 一致）。
-static NSDictionary *NFMakeFreshEntry(NSString *identifierSuffix) {
-    NSMutableDictionary *entry = [NFMakeEntry(identifierSuffix) mutableCopy];
-    entry[NFLogTimestampKey] = @([[NSDate date] timeIntervalSince1970] + 1.0);
+// WXLogStoreClearTests.m 一致）。
+static NSDictionary *WXMakeFreshEntry(NSString *identifierSuffix) {
+    NSMutableDictionary *entry = [WXMakeEntry(identifierSuffix) mutableCopy];
+    entry[WXLogTimestampKey] = @([[NSDate date] timeIntervalSince1970] + 1.0);
     return [entry copy];
 }
 
-static void NFFlushLogQueue(void) {
-    dispatch_sync([NFLogStore _logQueue], ^{
+static void WXFlushLogQueue(void) {
+    dispatch_sync([WXLogStore _logQueue], ^{
     });
 }
 
-static void NFCleanupLogFiles(NSString *logPath) {
+static void WXCleanupLogFiles(NSString *logPath) {
     [[NSFileManager defaultManager] removeItemAtPath:logPath error:nil];
     [[NSFileManager defaultManager] removeItemAtPath:[logPath stringByAppendingString:@".cleared.plist"] error:nil];
 }
@@ -88,9 +88,9 @@ int main(void) {
         int failures = 0;
 
         // Case A: append does not flush immediately; disk should not yet contain the entry.
-        NFCleanupLogFiles(logPath);
-        [NFLogStore appendBlockedEntry:NFMakeEntry(@"a")];
-        NFFlushLogQueue(); // drain the append async block, but no forced flush.
+        WXCleanupLogFiles(logPath);
+        [WXLogStore appendBlockedEntry:WXMakeEntry(@"a")];
+        WXFlushLogQueue(); // drain the append async block, but no forced flush.
         {
             NSArray *diskEntries = [NSArray arrayWithContentsOfFile:logPath];
             NSUInteger diskCount = [diskEntries isKindOfClass:[NSArray class]] ? diskEntries.count : 0;
@@ -103,12 +103,12 @@ int main(void) {
         }
 
         // Case B: after forced flush, loadEntries sees the entry (deduped).
-        [NFLogStore _flushLockedForTesting];
+        [WXLogStore _flushLockedForTesting];
         {
-            NSArray<NSDictionary *> *entries = [NFLogStore loadEntries];
+            NSArray<NSDictionary *> *entries = [WXLogStore loadEntries];
             NSUInteger matchCount = 0;
             for (NSDictionary *entry in entries) {
-                if ([[entry objectForKey:NFLogRecordIDKey] isEqualToString:@"record-a"]) {
+                if ([[entry objectForKey:WXLogRecordIDKey] isEqualToString:@"record-a"]) {
                     matchCount++;
                 }
             }
@@ -122,18 +122,18 @@ int main(void) {
         }
 
         // Case C: append (no flush) -> clearEntries -> append new -> flush -> old entry must not revive.
-        // 用未来时间戳的新条目，避免被 clear-state 过滤（与 NFLogStoreClearTests.m 一致）。
-        [NFLogStore appendBlockedEntry:NFMakeFreshEntry(@"old")];
-        NFFlushLogQueue(); // drain append; old not yet flushed to disk.
-        [NFLogStore clearEntries];
-        [NFLogStore appendBlockedEntry:NFMakeFreshEntry(@"new")];
-        NFFlushLogQueue();
-        [NFLogStore _flushLockedForTesting];
+        // 用未来时间戳的新条目，避免被 clear-state 过滤（与 WXLogStoreClearTests.m 一致）。
+        [WXLogStore appendBlockedEntry:WXMakeFreshEntry(@"old")];
+        WXFlushLogQueue(); // drain append; old not yet flushed to disk.
+        [WXLogStore clearEntries];
+        [WXLogStore appendBlockedEntry:WXMakeFreshEntry(@"new")];
+        WXFlushLogQueue();
+        [WXLogStore _flushLockedForTesting];
         {
-            NSArray<NSDictionary *> *entries = [NFLogStore loadEntries];
+            NSArray<NSDictionary *> *entries = [WXLogStore loadEntries];
             BOOL hasOld = NO, hasNew = NO;
             for (NSDictionary *entry in entries) {
-                NSString *recordID = [entry objectForKey:NFLogRecordIDKey];
+                NSString *recordID = [entry objectForKey:WXLogRecordIDKey];
                 if ([recordID isEqualToString:@"record-old"]) hasOld = YES;
                 if ([recordID isEqualToString:@"record-new"]) hasNew = YES;
             }
@@ -145,7 +145,7 @@ int main(void) {
             }
         }
 
-        NFCleanupLogFiles(logPath);
+        WXCleanupLogFiles(logPath);
         [[NSFileManager defaultManager] removeItemAtPath:testDirectory error:nil];
 
         if (failures > 0) {

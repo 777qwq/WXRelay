@@ -1,10 +1,10 @@
 #import <XCTest/XCTest.h>
-#import "../NotificationFilterTweak/NFNotificationRecord.h"
-#import "../NotificationFilterTweak/NFRuleEngine.h"
-#import "../Shared/NFPreferences.h"
+#import "../WXRelayTweak/WXNotificationRecord.h"
+#import "../WXRelayTweak/WXRuleEngine.h"
+#import "../Shared/WXPreferences.h"
 
-// Test helper to simulate NFBlockedActionRecordKey logic
-static NSString *NFNormalizedStringValueTest(id value) {
+// Test helper to simulate WXBlockedActionRecordKey logic
+static NSString *WXNormalizedStringValueTest(id value) {
     if (!value) {
         return nil;
     }
@@ -22,48 +22,48 @@ static NSString *NFNormalizedStringValueTest(id value) {
     return [stringValue stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
-static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMatchResult *result) {
+static NSString *WXBlockedActionRecordKeyTest(WXNotificationRecord *record, WXMatchResult *result) {
     if (!record || !result.shouldBlock) {
         return nil;
     }
 
-    NSString *bulletinID = NFNormalizedStringValueTest(record.bulletinID);
-    NSString *recordID = NFNormalizedStringValueTest(record.recordID);
-    NSString *publisherBulletinID = NFNormalizedStringValueTest(record.publisherBulletinID);
+    NSString *bulletinID = WXNormalizedStringValueTest(record.bulletinID);
+    NSString *recordID = WXNormalizedStringValueTest(record.recordID);
+    NSString *publisherBulletinID = WXNormalizedStringValueTest(record.publisherBulletinID);
     if (bulletinID.length == 0 && recordID.length == 0 && publisherBulletinID.length == 0) {
         return nil;
     }
 
-    NSString *matchedPattern = NFNormalizedStringValueTest(result.matchedPattern);
-    NSString *matchedMode = NFNormalizedStringValueTest(result.matchedMode);
+    NSString *matchedPattern = WXNormalizedStringValueTest(result.matchedPattern);
+    NSString *matchedMode = WXNormalizedStringValueTest(result.matchedMode);
 
     // For whitelist default block mode with no pattern, include content hash to distinguish different notifications
-    if (matchedPattern.length == 0 && [matchedMode isEqualToString:NFMatchModeWhitelistDefault]) {
+    if (matchedPattern.length == 0 && [matchedMode isEqualToString:WXMatchModeWhitelistDefault]) {
         NSString *contentForHash = [NSString stringWithFormat:@"%@|%@|%@",
-                                    NFNormalizedStringValueTest(record.title) ?: @"",
-                                    NFNormalizedStringValueTest(record.subtitle) ?: @"",
-                                    NFNormalizedStringValueTest(record.messageText) ?: @""];
+                                    WXNormalizedStringValueTest(record.title) ?: @"",
+                                    WXNormalizedStringValueTest(record.subtitle) ?: @"",
+                                    WXNormalizedStringValueTest(record.messageText) ?: @""];
         matchedPattern = [NSString stringWithFormat:@"content:%lu", (unsigned long)[contentForHash hash]];
     }
 
     return [NSString stringWithFormat:@"%@|%@|%@|%@|%@|%@|%@",
-                                      NFNormalizedStringValueTest(record.bundleIdentifier) ?: @"",
-                                      NFNormalizedStringValueTest(record.sectionID) ?: @"",
+                                      WXNormalizedStringValueTest(record.bundleIdentifier) ?: @"",
+                                      WXNormalizedStringValueTest(record.sectionID) ?: @"",
                                       bulletinID ?: @"",
                                       recordID ?: @"",
                                       publisherBulletinID ?: @"",
-                                      NFNormalizedStringValueTest(result.matchedScope) ?: @"",
+                                      WXNormalizedStringValueTest(result.matchedScope) ?: @"",
                                       matchedPattern ?: @""];
 }
 
-@interface NFWhitelistDedupeTests : XCTestCase
+@interface WXWhitelistDedupeTests : XCTestCase
 @end
 
-@implementation NFWhitelistDedupeTests
+@implementation WXWhitelistDedupeTests
 
 - (void)testWhitelistDefaultBlockGeneratesDifferentKeysForDifferentNotifications {
     // Setup: Create two notifications with different content
-    NFNotificationRecord *record1 = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record1 = [[WXNotificationRecord alloc] init];
     record1.bundleIdentifier = @"com.example.app";
     record1.sectionID = @"com.example.app";
     record1.bulletinID = @"bulletin-001";
@@ -71,7 +71,7 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
     record1.subtitle = @"First subtitle";
     record1.messageText = @"First message";
 
-    NFNotificationRecord *record2 = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record2 = [[WXNotificationRecord alloc] init];
     record2.bundleIdentifier = @"com.example.app";
     record2.sectionID = @"com.example.app";
     record2.bulletinID = @"bulletin-002";
@@ -80,21 +80,21 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
     record2.messageText = @"Second message";
 
     // Create whitelist default block result (no pattern)
-    NFMatchResult *result1 = [[NFMatchResult alloc] init];
+    WXMatchResult *result1 = [[WXMatchResult alloc] init];
     result1.shouldBlock = YES;
     result1.matchedScope = @"app:com.example.app";
-    result1.matchedMode = NFMatchModeWhitelistDefault;
+    result1.matchedMode = WXMatchModeWhitelistDefault;
     result1.matchedPattern = nil;
 
-    NFMatchResult *result2 = [[NFMatchResult alloc] init];
+    WXMatchResult *result2 = [[WXMatchResult alloc] init];
     result2.shouldBlock = YES;
     result2.matchedScope = @"app:com.example.app";
-    result2.matchedMode = NFMatchModeWhitelistDefault;
+    result2.matchedMode = WXMatchModeWhitelistDefault;
     result2.matchedPattern = nil;
 
     // Generate keys
-    NSString *key1 = NFBlockedActionRecordKeyTest(record1, result1);
-    NSString *key2 = NFBlockedActionRecordKeyTest(record2, result2);
+    NSString *key1 = WXBlockedActionRecordKeyTest(record1, result1);
+    NSString *key2 = WXBlockedActionRecordKeyTest(record2, result2);
 
     // Assert: Keys should be different because content is different
     XCTAssertNotNil(key1, @"Key 1 should not be nil");
@@ -104,7 +104,7 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
 
 - (void)testWhitelistDefaultBlockGeneratesSameKeyForSameNotification {
     // Setup: Create two identical notifications
-    NFNotificationRecord *record1 = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record1 = [[WXNotificationRecord alloc] init];
     record1.bundleIdentifier = @"com.example.app";
     record1.sectionID = @"com.example.app";
     record1.bulletinID = @"bulletin-001";
@@ -112,7 +112,7 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
     record1.subtitle = @"Same subtitle";
     record1.messageText = @"Same message";
 
-    NFNotificationRecord *record2 = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record2 = [[WXNotificationRecord alloc] init];
     record2.bundleIdentifier = @"com.example.app";
     record2.sectionID = @"com.example.app";
     record2.bulletinID = @"bulletin-001";
@@ -121,21 +121,21 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
     record2.messageText = @"Same message";
 
     // Create whitelist default block result
-    NFMatchResult *result1 = [[NFMatchResult alloc] init];
+    WXMatchResult *result1 = [[WXMatchResult alloc] init];
     result1.shouldBlock = YES;
     result1.matchedScope = @"app:com.example.app";
-    result1.matchedMode = NFMatchModeWhitelistDefault;
+    result1.matchedMode = WXMatchModeWhitelistDefault;
     result1.matchedPattern = nil;
 
-    NFMatchResult *result2 = [[NFMatchResult alloc] init];
+    WXMatchResult *result2 = [[WXMatchResult alloc] init];
     result2.shouldBlock = YES;
     result2.matchedScope = @"app:com.example.app";
-    result2.matchedMode = NFMatchModeWhitelistDefault;
+    result2.matchedMode = WXMatchModeWhitelistDefault;
     result2.matchedPattern = nil;
 
     // Generate keys
-    NSString *key1 = NFBlockedActionRecordKeyTest(record1, result1);
-    NSString *key2 = NFBlockedActionRecordKeyTest(record2, result2);
+    NSString *key1 = WXBlockedActionRecordKeyTest(record1, result1);
+    NSString *key2 = WXBlockedActionRecordKeyTest(record2, result2);
 
     // Assert: Keys should be the same for identical content
     XCTAssertNotNil(key1, @"Key 1 should not be nil");
@@ -145,14 +145,14 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
 
 - (void)testBlacklistModeStillUsesPattern {
     // Setup: Create notification with blacklist mode (has pattern)
-    NFNotificationRecord *record1 = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record1 = [[WXNotificationRecord alloc] init];
     record1.bundleIdentifier = @"com.example.app";
     record1.sectionID = @"com.example.app";
     record1.bulletinID = @"bulletin-001";
     record1.title = @"First Notification";
     record1.messageText = @"First message";
 
-    NFNotificationRecord *record2 = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record2 = [[WXNotificationRecord alloc] init];
     record2.bundleIdentifier = @"com.example.app";
     record2.sectionID = @"com.example.app";
     record2.bulletinID = @"bulletin-002";
@@ -160,21 +160,21 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
     record2.messageText = @"Second message";
 
     // Create blacklist mode result with pattern
-    NFMatchResult *result1 = [[NFMatchResult alloc] init];
+    WXMatchResult *result1 = [[WXMatchResult alloc] init];
     result1.shouldBlock = YES;
     result1.matchedScope = @"app:com.example.app";
-    result1.matchedMode = NFMatchModeContains;
+    result1.matchedMode = WXMatchModeContains;
     result1.matchedPattern = @"spam";
 
-    NFMatchResult *result2 = [[NFMatchResult alloc] init];
+    WXMatchResult *result2 = [[WXMatchResult alloc] init];
     result2.shouldBlock = YES;
     result2.matchedScope = @"app:com.example.app";
-    result2.matchedMode = NFMatchModeContains;
+    result2.matchedMode = WXMatchModeContains;
     result2.matchedPattern = @"spam";
 
     // Generate keys
-    NSString *key1 = NFBlockedActionRecordKeyTest(record1, result1);
-    NSString *key2 = NFBlockedActionRecordKeyTest(record2, result2);
+    NSString *key1 = WXBlockedActionRecordKeyTest(record1, result1);
+    NSString *key2 = WXBlockedActionRecordKeyTest(record2, result2);
 
     // Assert: Keys should use the pattern, not content hash
     XCTAssertNotNil(key1, @"Key 1 should not be nil");
@@ -187,7 +187,7 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
 
 - (void)testWhitelistExcludeModeUsesPattern {
     // Setup: Create notification with whitelist exclude mode (has pattern)
-    NFNotificationRecord *record = [[NFNotificationRecord alloc] init];
+    WXNotificationRecord *record = [[WXNotificationRecord alloc] init];
     record.bundleIdentifier = @"com.example.app";
     record.sectionID = @"com.example.app";
     record.bulletinID = @"bulletin-001";
@@ -195,14 +195,14 @@ static NSString *NFBlockedActionRecordKeyTest(NFNotificationRecord *record, NFMa
     record.messageText = @"Important message";
 
     // Create whitelist exclude result with pattern (allowed)
-    NFMatchResult *result = [[NFMatchResult alloc] init];
+    WXMatchResult *result = [[WXMatchResult alloc] init];
     result.shouldBlock = YES;  // In whitelist mode, exclude rules set shouldBlock to YES (inverted logic)
     result.matchedScope = @"app:com.example.app";
-    result.matchedMode = NFMatchModeExclude;
+    result.matchedMode = WXMatchModeExclude;
     result.matchedPattern = @"important";
 
     // Generate key
-    NSString *key = NFBlockedActionRecordKeyTest(record, result);
+    NSString *key = WXBlockedActionRecordKeyTest(record, result);
 
     // Assert: Should use the pattern, not content hash
     XCTAssertNotNil(key, @"Key should not be nil");

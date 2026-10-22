@@ -362,8 +362,8 @@ verify_rootful_deb() {
     local prefs_binary
 
     unpack_dir="$(unpack_for_verification "$deb_path")"
-    tweak_binary="$unpack_dir/Library/MobileSubstrate/DynamicLibraries/NotificationFilter.dylib"
-    prefs_binary="$unpack_dir/Library/PreferenceBundles/NotificationFilterPrefs.bundle/NotificationFilterPrefs"
+    tweak_binary="$unpack_dir/Library/MobileSubstrate/DynamicLibraries/WXRelay.dylib"
+    prefs_binary="$unpack_dir/Library/PreferenceBundles/WXRelayPrefs.bundle/WXRelayPrefs"
 
     assert_architecture "$deb_path" "iphoneos-arm"
     assert_exists "$tweak_binary"
@@ -380,13 +380,13 @@ verify_rootless_deb() {
     local prefs_binary
 
     unpack_dir="$(unpack_for_verification "$deb_path")"
-    tweak_binary="$unpack_dir/var/jb/Library/MobileSubstrate/DynamicLibraries/NotificationFilter.dylib"
-    prefs_binary="$unpack_dir/var/jb/Library/PreferenceBundles/NotificationFilterPrefs.bundle/NotificationFilterPrefs"
+    tweak_binary="$unpack_dir/var/jb/Library/MobileSubstrate/DynamicLibraries/WXRelay.dylib"
+    prefs_binary="$unpack_dir/var/jb/Library/PreferenceBundles/WXRelayPrefs.bundle/WXRelayPrefs"
 
     assert_architecture "$deb_path" "iphoneos-arm64"
     assert_exists "$tweak_binary"
     assert_exists "$prefs_binary"
-    assert_absent "$unpack_dir/Library/MobileSubstrate/DynamicLibraries/NotificationFilter.dylib"
+    assert_absent "$unpack_dir/Library/MobileSubstrate/DynamicLibraries/WXRelay.dylib"
     assert_clean_unpack_dir "$unpack_dir"
     assert_mobile_readable_payload "$unpack_dir"
 }
@@ -398,8 +398,8 @@ verify_roothide_deb() {
     local prefs_binary
 
     unpack_dir="$(unpack_for_verification "$deb_path")"
-    tweak_binary="$unpack_dir/Library/MobileSubstrate/DynamicLibraries/NotificationFilter.dylib"
-    prefs_binary="$unpack_dir/Library/PreferenceBundles/NotificationFilterPrefs.bundle/NotificationFilterPrefs"
+    tweak_binary="$unpack_dir/Library/MobileSubstrate/DynamicLibraries/WXRelay.dylib"
+    prefs_binary="$unpack_dir/Library/PreferenceBundles/WXRelayPrefs.bundle/WXRelayPrefs"
 
     assert_architecture "$deb_path" "iphoneos-arm64e"
     assert_exists "$tweak_binary"

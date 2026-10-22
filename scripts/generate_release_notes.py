@@ -184,7 +184,7 @@ def render_notes(repo: str, current_tag: str, previous_tag: str | None, summary:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate GitHub release notes.")
     parser.add_argument("--current-tag", required=True, help="Current release tag, e.g. v1.1.0")
-    parser.add_argument("--repo", required=True, help="GitHub repository slug, e.g. tunecc/NotificationFilter")
+    parser.add_argument("--repo", required=True, help="GitHub repository slug, e.g. tunecc/WXRelay")
     parser.add_argument("--output", required=True, help="Output markdown path")
     return parser.parse_args()
 
