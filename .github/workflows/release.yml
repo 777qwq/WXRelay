@@ -83,8 +83,8 @@ jobs:
       - name: Verify release tag matches project version
         run: |
           PACKAGE_VERSION="$(awk -F': ' '$1 == "Version" { print $2; exit }' control)"
-          PREFS_SHORT_VERSION="$(plutil -extract CFBundleShortVersionString raw -o - NotificationFilterPrefs/Resources/Info.plist)"
-          PREFS_BUILD_VERSION="$(plutil -extract CFBundleVersion raw -o - NotificationFilterPrefs/Resources/Info.plist)"
+          PREFS_SHORT_VERSION="$(plutil -extract CFBundleShortVersionString raw -o - WXRelayPrefs/Resources/Info.plist)"
+          PREFS_BUILD_VERSION="$(plutil -extract CFBundleVersion raw -o - WXRelayPrefs/Resources/Info.plist)"
           TAG_VERSION="${RELEASE_TAG#v}"
 
           if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
