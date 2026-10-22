@@ -216,6 +216,14 @@ static void NFPumpWeChatMsgSpool(void) {
             record.subtitle = [d[@"subtitle"] isKindOfClass:[NSString class]] ? d[@"subtitle"] : @"";
             record.body = [d[@"body"] isKindOfClass:[NSString class]] ? d[@"body"] : @"";
             record.message = record.body;
+            // v2.8.4 补齐匹配文本：手动 record 不填 joinedText = 匹配引擎拿空串
+            NSString *sub = record.subtitle ?: @"";
+            NSMutableArray *parts = [NSMutableArray array];
+            if (record.title.length) [parts addObject:record.title];
+            if (sub.length && ![sub isEqualToString:record.title]) [parts addObject:sub];
+            if (record.body.length) [parts addObject:record.body];
+            record.joinedText = [parts componentsJoinedByString:@"\n"];
+            record.messageText = record.body;
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
             NFSBLog([NSString stringWithFormat:@"pump record: title=%@ body=%@ bid=%@ id=%@", record.title, record.body, record.bundleIdentifier, record.bulletinID]);
             NFForwardMatchedRecordToWeChat(record);
