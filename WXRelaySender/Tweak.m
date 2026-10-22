@@ -12,6 +12,7 @@
 #import <Foundation/Foundation.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
+#import <pthread.h>
 
 static void wrLog(NSString *msg) {
     @try {
@@ -30,6 +31,7 @@ static void wrLog(NSString *msg) {
 }
 
 static void WRNoteSentText(NSString *text);
+static volatile BOOL WRInSend = NO;
 
 // v2.3.2 路A：备注/昵称 → wxid，**仅精准匹配**（不做包含/前缀）；解析失败返回 nil，绝不裸发
 static NSString *WRResolveTargetID(NSString *targetId) {
@@ -76,12 +78,14 @@ static NSString *WRResolveTargetID(NSString *targetId) {
 // v2.3.0 直发：进程内私 API，走微信原生发送管线（CMessageMgr AddMsg），不再依赖懒猫 handleOpenURL
 // 参考：DKWechatHelper sendMsg（8.x 实战）+ iWeChat dump 头；真机签名待验证
 static BOOL WRSendMessage(NSString *targetId, NSString *text) {
+    if (WRInSend) return NO; // 防重入
+    WRInSend = YES;
     @try {
         // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
         BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
             || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
         NSString *resolved = isPlainID ? targetId : WRResolveTargetID(targetId);
-        if (!resolved) { wrLog([NSString stringWithFormat:@"resolve failed, skip '%@'", targetId]); return NO; }
+        if (!resolved) { wrLog([NSString stringWithFormat:@"resolve failed, skip '%@'", targetId]); { WRInSend = NO; return NO; } }
         targetId = resolved;
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         Class CMessageMgr = objc_getClass("CMessageMgr");
@@ -89,18 +93,18 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
         Class SettingUtil = objc_getClass("SettingUtil");
         if (!MMServiceCenter || !CMessageMgr || !CMessageWrap || !SettingUtil) {
             wrLog(@"send: private class missing");
-            return NO;
+            { WRInSend = NO; return NO; }
         }
         id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
         id fromUsr = ((id(*)(id,SEL,long long))objc_msgSend)(SettingUtil, @selector(getLocalUsrName:), 0);
-        if (!center || !fromUsr) { wrLog(@"send: center/self missing"); return NO; }
-        if (![center respondsToSelector:@selector(getService:)]) { wrLog(@"send: no getService"); return NO; }
+        if (!center || !fromUsr) { wrLog(@"send: center/self missing"); { WRInSend = NO; return NO; } }
+        if (![center respondsToSelector:@selector(getService:)]) { wrLog(@"send: no getService"); { WRInSend = NO; return NO; } }
         id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CMessageMgr);
-        if (!mgr) { wrLog(@"send: no CMessageMgr"); return NO; }
-        if (![(id)CMessageWrap respondsToSelector:@selector(alloc)]) { wrLog(@"send: no wrap alloc"); return NO; }
+        if (!mgr) { wrLog(@"send: no CMessageMgr"); { WRInSend = NO; return NO; } }
+        if (![(id)CMessageWrap respondsToSelector:@selector(alloc)]) { wrLog(@"send: no wrap alloc"); { WRInSend = NO; return NO; } }
         id wrap = ((id(*)(id,SEL))objc_msgSend)((id)CMessageWrap, @selector(alloc));
         wrap = ((id(*)(id,SEL,long long))objc_msgSend)(wrap, @selector(initWithMsgType:), (long long)1);
-        if (!wrap) { wrLog(@"send: wrap init failed"); return NO; }
+        if (!wrap) { wrLog(@"send: wrap init failed"); { WRInSend = NO; return NO; } }
         ((void(*)(id,SEL,id))objc_msgSend)(wrap, @selector(setM_nsFromUsr:), fromUsr);
         ((void(*)(id,SEL,id))objc_msgSend)(wrap, @selector(setM_nsContent:), text);
         ((void(*)(id,SEL,id))objc_msgSend)(wrap, @selector(setM_nsToUsr:), targetId);
@@ -118,10 +122,11 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
         ((void(*)(id,SEL,id,id))objc_msgSend)(mgr, @selector(AddMsg:MsgWrap:), targetId, wrap);
         WRNoteSentText(text);
         wrLog([NSString stringWithFormat:@"send ok -> %@ (len=%lu)", targetId, (unsigned long)text.length]);
+        WRInSend = NO;
         return YES;
     } @catch (NSException *e) {
         wrLog([NSString stringWithFormat:@"send EXC: %@ %@", e.name, e.reason]);
-        return NO;
+        { WRInSend = NO; return NO; }
     }
 }
 
@@ -204,26 +209,28 @@ static void WRWriteMsgSourceFlag(void) {
 }
 
 static NSMutableSet<NSString *> *WRLastSentTexts = nil;
-static dispatch_queue_t WRLastSentQueue = nil;
+static pthread_mutex_t WRLastSentMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void WRNoteSentText(NSString *text) {
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        WRLastSentTexts = [NSMutableSet set];
-        WRLastSentQueue = dispatch_queue_create("com.777qwq.wxrelay.lastsent", DISPATCH_QUEUE_SERIAL);
-    });
-    dispatch_barrier_async(WRLastSentQueue, ^{
-        [WRLastSentTexts addObject:text ?: @""];
-        if (WRLastSentTexts.count > 64) [WRLastSentTexts removeObject:[[WRLastSentTexts allObjects] firstObject]];
-    });
+    pthread_mutex_lock(&WRLastSentMutex);
+    if (!WRLastSentTexts) WRLastSentTexts = [NSMutableSet set];
+    [WRLastSentTexts addObject:text ?: @""];
+    if (WRLastSentTexts.count > 64) {
+        NSString *oldest = [WRLastSentTexts anyObject];
+        if (oldest) [WRLastSentTexts removeObject:oldest];
+    }
+    pthread_mutex_unlock(&WRLastSentMutex);
 }
 
 static BOOL WRTextWasRecentlySent(NSString *text) {
-    if (!WRLastSentTexts) return NO;
-    __block BOOL hit = NO;
-    dispatch_sync(WRLastSentQueue, ^{ hit = [WRLastSentTexts containsObject:text ?: @""]; });
+    if (!text.length) return NO;
+    pthread_mutex_lock(&WRLastSentMutex);
+    BOOL hit = WRLastSentTexts && [WRLastSentTexts containsObject:text];
+    pthread_mutex_unlock(&WRLastSentMutex);
     return hit;
 }
+
+// v2.8.5 发送中旗标：B hook 见旗标直接跳过（重入/回声釜底抽薪）
 
 static void WRSpoolMsgRecord(NSDictionary *record) {
     @try {
@@ -248,6 +255,7 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
     @try {
         // 候选参数序归一：单参候选时 wrap 落在 arg1
         if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
+        if (WRInSend) return; // 发送中：跳过本次回声/重入
         if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
         WRWriteMsgSourceFlag();
         // 只收文本（v1）；系统消息/媒体后续需要再说
