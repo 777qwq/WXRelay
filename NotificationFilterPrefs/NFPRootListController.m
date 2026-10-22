@@ -64,6 +64,8 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
         _savedNav = self.navigationController;
         _savedStack = _savedNav.viewControllers;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppResign) name:UIApplicationWillResignActiveNotification object:nil];
+        // WillEnterForeground 抢在首帧渲染前恢复，避免闪主页
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppWillForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppActive) name:UIApplicationDidBecomeActiveNotification object:nil];
     }
 }
@@ -73,8 +75,12 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     _savedStack = _savedNav.viewControllers;
 }
 
-- (void)jumpAppActive {
+- (void)jumpAppWillForeground {
     NFPRestoreStackIfPopped();
+}
+
+- (void)jumpAppActive {
+    NFPRestoreStackIfPopped(); // 二道保险：凶手若在回前台瞬间才弹
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
