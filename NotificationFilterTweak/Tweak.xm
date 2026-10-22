@@ -155,9 +155,60 @@ static BOOL NFTargetAllowsApp(NSDictionary *target, NFNotificationRecord *record
     return NO;
 }
 
+// v2.8.0 模块B：微信端消息源旗标（15 分钟内=微信进程活着，通知源让位，防双发）
+static BOOL NFWeChatMsgSourceAlive(void) {
+    NSString *container = NFWeChatContainerPath();
+    if (!container) return NO;
+    NSString *path = [container stringByAppendingPathComponent:@"tmp/wxrelay_msgsource.flag"];
+    NSDictionary *attrs = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+    if (!attrs) return NO;
+    NSDate *mtime = attrs[NSFileModificationDate];
+    return mtime && [[NSDate date] timeIntervalSinceDate:mtime] < 900.0;
+}
+
+// v2.8.0 模块B：微信端消息 spool → record → 现有匹配管线
+static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record);
+
+static void NFPumpWeChatMsgSpool(void) {
+    @try {
+        NSString *container = NFWeChatContainerPath();
+        if (!container) return;
+        NSString *dir = [container stringByAppendingPathComponent:@"tmp/wxrelay_msgs"];
+        NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil];
+        if (files.count == 0) return;
+        for (NSString *fn in files) {
+            if (![fn hasSuffix:@".json"]) continue;
+            NSString *p = [dir stringByAppendingPathComponent:fn];
+            NSDictionary *d = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:p]
+                options:NSJSONReadingAllowFragments error:nil];
+            [[NSFileManager defaultManager] removeItemAtPath:p error:nil];
+            if (![d isKindOfClass:[NSDictionary class]]) continue;
+            NSString *bid = [d[@"bid"] isKindOfClass:[NSString class]] ? d[@"bid"] : @"";
+            NSString *title = [d[@"title"] isKindOfClass:[NSString class]] ? d[@"title"] : @"";
+            if (bid.length == 0 || title.length == 0) continue;
+            NFNotificationRecord *record = [[NFNotificationRecord alloc] init];
+            record.bundleIdentifier = bid;
+            record.sectionID = bid;
+            record.title = title;
+            record.subtitle = [d[@"subtitle"] isKindOfClass:[NSString class]] ? d[@"subtitle"] : @"";
+            record.body = [d[@"body"] isKindOfClass:[NSString class]] ? d[@"body"] : @"";
+            record.message = record.body;
+            record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
+            NFForwardMatchedRecordToWeChat(record);
+        }
+    } @catch (NSException *e) { }
+}
+
+static void NFWeChatMsgSpoolCallback(CFNotificationCenterRef __unused c, void __unused *o,
+                                     CFStringRef __unused n, const void __unused *obj, CFDictionaryRef __unused ui) {
+    @autoreleasepool { NFPumpWeChatMsgSpool(); }
+}
+
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     // v2.4.9：转发前强制读最新 prefs（锁屏 darwin 排队可能跳过更新）
     NFReloadPreferences();
+    // v2.8.0 模块B：微信进程活着时，微信通知让位（消息源全覆盖，防双发）
+    if ([record.bundleIdentifier isEqualToString:@"com.tencent.xin"] && NFWeChatMsgSourceAlive()) return;
     if (!NFMarkForwardedIfNew(record)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
@@ -937,6 +988,13 @@ static void NFPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
                                         NULL,
                                         NFNotificationHistoryRefreshRequestCallback,
                                         (CFStringRef)NFNotificationHistoryRefreshRequestNotification,
+                                        NULL,
+                                        CFNotificationSuspensionBehaviorDeliverImmediately);
+        // v2.8.0 模块B：微信消息 spool 到货
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                        NULL,
+                                        NFWeChatMsgSpoolCallback,
+                                        (CFStringRef)@"com.777qwq.wxrelay.msg",
                                         NULL,
                                         CFNotificationSuspensionBehaviorDeliverImmediately);
 
