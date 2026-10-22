@@ -22,51 +22,6 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
 @end
 
 // v2.5.6 pop 探针：记录谁在切后台时弹导航（堆栈暴露来源插件）
-static void NAVInstallPopProbe(void);
-static void NAVInstallPopProbe(void) {
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        Class cls = NSClassFromString(@"UINavigationController");
-        SEL sel = @selector(popViewControllerAnimated:);
-        Method m = class_getInstanceMethod(cls, sel);
-        if (!m) return;
-        IMP oldImp = method_getImplementation(m);
-        IMP newImp = imp_implementationWithBlock(^(id selfVC, SEL _cmd, BOOL animated) {
-            @try {
-                UINavigationController *nav = (UINavigationController *)selfVC;
-                if (nav.viewControllers.count <= 1) {
-                    ((BOOL(*)(id,SEL,BOOL))oldImp)(selfVC, _cmd, animated);
-                    return;
-                }
-                NSMutableArray *frames = [NSMutableArray array];
-                NSArray *syms = [NSThread callStackSymbols];
-                for (NSUInteger i = 2; i < syms.count && i < 9; i++) [frames addObject:syms[i]];
-                NSString *line = [NSString stringWithFormat:@"[%@] POP by:\n%@\n", [NSDate date], [frames componentsJoinedByString:@"\n"]];
-                NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
-                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    @try {
-                        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-                        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
-                        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
-                    } @catch (NSException *e) { }
-                });
-            } @catch (NSException *e) { }
-            ((BOOL(*)(id,SEL,BOOL))oldImp)(selfVC, _cmd, animated);
-        });
-        method_setImplementation(m, newImp);
-    });
-}
-
-static void NAVLog(NSString *msg) {
-    @try {
-        NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
-        NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
-        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
-        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
-    } @catch (NSException *e) { }
-}
-
 @implementation NFPWeChatTargetEditorController
 
 - (instancetype)initWithTarget:(NSDictionary *)target saveHandler:(void (^)(NSDictionary *))saveHandler {
@@ -81,15 +36,8 @@ static void NAVLog(NSString *msg) {
     return self;
 }
 
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-    NSUInteger depth = self.navigationController.viewControllers.count;
-    NAVLog([NSString stringWithFormat:@"editor disappear stack=%lu", (unsigned long)depth]);
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
-    NAVInstallPopProbe();
     self.title = self.targetId.length ? NFPLocalizedString(@"TARGET_EDIT_TITLE") : NFPLocalizedString(@"TARGET_ADD_TITLE");
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_SAVE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow-id"];
@@ -199,7 +147,6 @@ static void NAVLog(NSString *msg) {
             [weakSelf.tableView reloadData];
         }];
         [self.navigationController pushViewController:picker animated:YES];
-        NAVLog(@"picker pushed (stack+1)");
         return;
     }
         // v2.4.4：包含区 push 规则列表页（含可选回复），不再弹窗

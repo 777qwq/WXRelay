@@ -10,16 +10,6 @@
 @interface NFPRootListController () <UITextViewDelegate>
 @end
 
-static void NAVLog(NSString *msg) {
-    @try {
-        NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
-        NSString *path = @"/var/mobile/Library/wxrelay_nav.log";
-        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
-        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
-    } @catch (NSException *e) { }
-}
-
 @implementation NFPRootListController
 
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
@@ -30,30 +20,18 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = NFPLocalizedString(@"ROOT_TITLE");
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(navAppBackground) name:UIApplicationWillResignActiveNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(navAppForeground) name:UIApplicationDidBecomeActiveNotification object:nil];
 
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    NSUInteger depth = self.navigationController.viewControllers.count;
-    NAVLog([NSString stringWithFormat:@"root viewWillAppear stack=%lu", (unsigned long)depth]);
-    [self reloadSpecifiers];
-}
-
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-    NSUInteger depth = self.navigationController.viewControllers.count;
-    NAVLog([NSString stringWithFormat:@"root viewWillDisappear stack=%lu", (unsigned long)depth]);
+    // 移出转场帧，避免回退动画被同步刷新打断
+    dispatch_async(dispatch_get_main_queue(), ^{ [self reloadSpecifiers]; });
 }
 
 - (void)dealloc {
-    NAVLog(@"root DEALLOC (重建证据)");
 }
 
-- (void)navAppBackground { NAVLog(@"app BACKGROUND while root"); }
-- (void)navAppForeground { NAVLog(@"app FOREGROUND"); }
 
 - (NSArray<NSDictionary *> *)targetListFromPrefs {
     NSDictionary *prefs = [NFPreferences loadPreferences];
