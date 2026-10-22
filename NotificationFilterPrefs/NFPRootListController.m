@@ -12,17 +12,6 @@
 
 @implementation NFPRootListController
 
-// v2.7.3 跳主页取证：进程出生标记（定案后删）
-+ (void)load {
-    @try {
-        NSString *line = [NSString stringWithFormat:@"[BIRTH] %@\n", [NSDate date]];
-        NSString *path = @"/var/mobile/Library/wxrelay_birth.log";
-        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
-        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
-    } @catch (NSException *e) { }
-}
-
 // v2.7.7 提前守卫回归：切后台存栈快照，WillEnterForeground 首帧渲染前恢复（不闪主页）；探针保留
 static __strong NFPRootListController *_jumpAnchor = nil;
 static NSArray<UIViewController *> *_savedStack = nil;
@@ -34,32 +23,6 @@ static void NFPRestoreStackIfPopped(void) {
     if (![_savedNav.viewControllers isEqualToArray:_savedStack]) {
         [_savedNav setViewControllers:_savedStack animated:NO];
     }
-}
-
-// v2.7.5 凶手探针：KVO 监听栈变动，仅后台/非活跃时刻抓调用栈（零 swizzle，结案后删）
-static void *_navKVOContext = &_navKVOContext;
-
-static void NFPLogPopSuspect(NSDictionary *change) {
-    if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive) return;
-    @try {
-        id oldV = [change objectForKey:NSKeyValueChangeOldKey];
-        id newV = [change objectForKey:NSKeyValueChangeNewKey];
-        NSString *oldDesc = [oldV isKindOfClass:[NSArray class]] ? [NSString stringWithFormat:@"%lu 层", (unsigned long)[oldV count]] : @"?";
-        NSString *newDesc = [newV isKindOfClass:[NSArray class]] ? [NSString stringWithFormat:@"%lu 层", (unsigned long)[newV count]] : @"?";
-        NSArray *syms = [NSThread callStackSymbols];
-        NSMutableArray *frames = [NSMutableArray array];
-        for (NSUInteger i = 1; i < syms.count && i < 12; i++) [frames addObject:syms[i]];
-        NSString *line = [NSString stringWithFormat:@"[POP] %@ | %@ -> %@\n背景栈变更 by:\n%@\n---\n",
-                          [NSDate date], oldDesc, newDesc, [frames componentsJoinedByString:@"\n"]];
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            @try {
-                NSString *path = @"/var/mobile/Library/wxrelay_pop.log";
-                NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-                if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
-                if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
-            } @catch (NSException *e) { }
-        });
-    } @catch (NSException *e) { }
 }
 
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
@@ -89,7 +52,6 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppWillForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppActive) name:UIApplicationDidBecomeActiveNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppResign) name:UIApplicationWillResignActiveNotification object:nil];
-        [_savedNav addObserver:self forKeyPath:@"viewControllers" options:NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew context:&_navKVOContext];
     }
 }
 
@@ -105,18 +67,12 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     NFPRestoreStackIfPopped();
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
-    if (context != &_navKVOContext) { [super observeValueForKeyPath:keyPath ofObject:object change:change context:context]; return; }
-    NFPLogPopSuspect(change);
-}
-
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     // lastObject == self 说明是被更深层页面覆盖（push），否则 = 返回出本页，守卫退场
     if (self.navigationController.viewControllers.lastObject != self) return;
     _paneActive = NO;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [_savedNav removeObserver:self forKeyPath:@"viewControllers" context:&_navKVOContext];
     _savedStack = nil;
     _jumpAnchor = nil;
     _savedNav = nil;

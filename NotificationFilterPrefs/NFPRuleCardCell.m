@@ -168,15 +168,10 @@
     self.subtitleLeadingConstraint.constant = editingMode ? 50.0 : 14.0;
 
     // v2.4.4：包含规则显示回复摘要
-    NSString *reply = [ruleEntry isKindOfClass:[NSDictionary class]] ? ([ruleEntry[@"reply"] isKindOfClass:[NSString class]] ? ruleEntry[@"reply"] : @"") : @"";
     NSString *replyOnly = [ruleEntry isKindOfClass:[NSDictionary class]] ? ([ruleEntry[@"replyOnly"] isKindOfClass:[NSString class]] ? ruleEntry[@"replyOnly"] : @"") : @"";
     NSString *scopeName = NFPLocalizedScopeName(scope);
-    if (editorKind == NFPRuleEditorKindContains && reply.length > 0 && replyOnly.length > 0) {
-        self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ 转发+回: %@ / 只回: %@", scopeName, reply, replyOnly];
-    } else if (editorKind == NFPRuleEditorKindContains && replyOnly.length > 0) {
-        self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ 只回: %@", scopeName, replyOnly];
-    } else if (editorKind == NFPRuleEditorKindContains && reply.length > 0) {
-        self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ %@", scopeName, reply];
+    if (editorKind == NFPRuleEditorKindContains && replyOnly.length > 0) {
+        self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ 回: %@", scopeName, replyOnly];
     } else if (editorKind == NFPRuleEditorKindContains) {
         self.subtitleLabel.text = [NSString stringWithFormat:@"%@\n↩ %@", scopeName, NFPLocalizedString(@"RULES_ROW_RELAY_ONLY")];
     } else {

@@ -490,7 +490,6 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
         NSString *text = nil;
         BOOL enabled = YES;
         NSString *scope = defaultScope;
-        id replyValue = nil;
         id replyOnlyValue = nil;
 
         if ([rawRule isKindOfClass:[NSDictionary class]]) {
@@ -503,8 +502,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
                 [dictionary[NFRuleEntryScopeKey] length] > 0) {
                 scope = dictionary[NFRuleEntryScopeKey];
             }
-            replyValue = dictionary[@"reply"] ?: dictionary[@"Reply"];
-            replyOnlyValue = dictionary[@"replyOnly"] ?: dictionary[@"ReplyOnly"];
+            replyOnlyValue = dictionary[@"replyOnly"]; // v2.7.7 旧 reply 键随 normalize 洗掉
             if ([dictionary[NFRuleEntryIdentifierKey] isKindOfClass:[NSString class]] &&
                 [dictionary[NFRuleEntryIdentifierKey] length] > 0) {
                 identifier = dictionary[NFRuleEntryIdentifierKey];
@@ -522,10 +520,7 @@ static NSString *NFPreparePrimaryPreferencesFilePath(void) {
                                                     enabled:enabled
                                                   identifier:identifier
                                                        scope:[self _normalizedRuleScope:scope defaultScope:defaultScope]] mutableCopy];
-        // v2.5.1：透传可选回复字段（否则每次 normalize 都会洗掉 reply）
-        if (replyValue != nil && [replyValue isKindOfClass:[NSString class]] && [(NSString *)replyValue length] > 0) {
-            entry[@"reply"] = replyValue;
-        }
+        // v2.7.7：只透传回复框（留空=纯转发）
         if (replyOnlyValue != nil && [replyOnlyValue isKindOfClass:[NSString class]] && [(NSString *)replyOnlyValue length] > 0) {
             entry[@"replyOnly"] = replyOnlyValue;
         }

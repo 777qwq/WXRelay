@@ -5,22 +5,21 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NFPRuleTextEditorController : UIViewController
 
+// v2.7.7：单回复框（留空=纯转发；填了=纯回复），saveHandler 第三参为回复文本
 - (instancetype)initWithTitle:(NSString *)title
-                  placeholder:(NSString *)placeholder
+                  placeholder:(NSString * _Nullable)placeholder
                   initialRule:(NSString * _Nullable)initialRule
-                 initialScope:(NSString *)initialScope
+                 initialScope:(NSString * _Nullable)initialScope
                    editorKind:(NFPRuleEditorKind)editorKind
                   saveHandler:(void (^)(NSString *rule, NSString *scope))saveHandler;
 
-// v2.4.4：包含规则编辑带可选回复文本（saveHandler 第三参为回复，可空）
 - (instancetype)initWithTitle:(NSString *)title
-                  placeholder:(NSString *)placeholder
+                  placeholder:(NSString * _Nullable)placeholder
                   initialRule:(NSString * _Nullable)initialRule
-                 initialScope:(NSString *)initialScope
-                initialReply:(NSString * _Nullable)initialReply
-              initialReplyOnly:(NSString * _Nullable)initialReplyOnly
+                 initialScope:(NSString * _Nullable)initialScope
+            initialReplyOnly:(NSString * _Nullable)initialReplyOnly
                    editorKind:(NFPRuleEditorKind)editorKind
-                  saveHandler:(void (^)(NSString *rule, NSString *scope, NSString *reply, NSString *replyOnly))saveHandler;
+                  saveHandler:(void (^)(NSString *rule, NSString *scope, NSString *replyOnly))saveHandler;
 
 @end
 

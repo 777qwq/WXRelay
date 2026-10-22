@@ -143,14 +143,6 @@ static void NFAppendBlockedLog(NFNotificationRecord *record, NFMatchResult *resu
 
 static void NFReloadPreferences(void);
 
-static NSString *NFExpandReply(NSString *tpl, NFNotificationRecord *record) {
-    if (tpl.length == 0) return tpl;
-    NSString *out = [tpl stringByReplacingOccurrencesOfString:@"{app}" withString:record.bundleIdentifier ?: @""];
-    out = [out stringByReplacingOccurrencesOfString:@"{title}" withString:record.title ?: @""];
-    out = [out stringByReplacingOccurrencesOfString:@"{body}" withString:(record.body ?: record.messageText) ?: @""];
-    return out;
-}
-
 // v2.4.6 目标级来源 App 白名单：bundleID 数组等值匹配（picker 勾选），空数组=不限
 static BOOL NFTargetAllowsApp(NSDictionary *target, NFNotificationRecord *record) {
     NSArray *apps = [target[@"apps"] isKindOfClass:[NSArray class]] ? target[@"apps"] : @[];
@@ -195,20 +187,11 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
             NSString *haystack = NFTextForScope(entryScope.length ? entryScope : NFRuleScopeMessage, record);
             if ([haystack rangeOfString:ruleText].location == NSNotFound) continue;
             anyHit = YES;
-            NSString *reply = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"reply"] isKindOfClass:[NSString class]] ? entry[@"reply"] : @"") : @"";
+            // v2.7.7 语义：回复框留空=纯转发；填了=纯回复（不转发），文本原样发送
             NSString *replyOnly = [entry isKindOfClass:[NSDictionary class]] ? ([entry[@"replyOnly"] isKindOfClass:[NSString class]] ? entry[@"replyOnly"] : @"") : @"";
             BOOL isReplyOnly = [[replyOnly stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0;
-            if (!isReplyOnly && !forwarded && text.length) { [items addObject:@{ @"id": tid, @"text": text }]; forwarded = YES; }
-            // v2.5.6 语义：replyOnly 命中=只发回复不发原文；reply 命中=转发原文后追加
-            if ([[replyOnly stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0) {
-                NSString *expanded = NFExpandReply(replyOnly, record);
-                if (expanded.length) [items addObject:@{ @"id": tid, @"text": expanded }];
-                continue;
-            }
-            if ([[reply stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] length] > 0) {
-                NSString *expanded = NFExpandReply(reply, record);
-                if (expanded.length) [items addObject:@{ @"id": tid, @"text": expanded }];
-            }
+            if (!isReplyOnly && !forwarded && text.length) { [items addObject:@{ @"id": tid, @"text": text }]; forwarded = YES; continue; }
+            if (isReplyOnly && replyOnly.length > 0) [items addObject:@{ @"id": tid, @"text": replyOnly }];
         }
         if (!anyHit) continue;
     }
