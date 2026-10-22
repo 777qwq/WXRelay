@@ -16,13 +16,13 @@
 "TARGETS_FOOTER" = "右上角 + 新建目标。每个目标 = 接收 id（wxid / 群id / filehelper / 备注·昵称全名，精准匹配）+ 自己的包含/排除关键词。";
 "TARGET_SECTION_ENABLED" = "启用该目标";
 "TARGET_SECTION_ID" = "接收 id";
-"TARGET_SECTION_CONTAINS" = "包含关键词";
+"TARGET_SECTION_CONTAINS" = "包含规则";
 "TARGET_SECTION_EXCLUDE" = "排除关键词";
 "TARGET_ID_PLACEHOLDER" = "wxid_xxx / 群id@chatroom / filehelper / 备注名";
 "TARGET_ID_FOOTER" = "消息会转发给这个微信 id。可直接填 wxid、群 id（@chatroom 结尾）、filehelper，或填对方备注/昵称全名（发送时精准匹配解析，解析失败不转发）。";
 "TARGET_CONTAINS_FOOTER" = "留空 = 全部转发给该目标（排除关键词仍生效）。每条可单独选作用域：消息 / 标题 / 全部文本。";
 "TARGET_EXCLUDE_FOOTER" = "命中任一排除关键词就不转发给该目标，优先级高于包含关键词。";
-"TARGET_ROW_EDIT_CONTAINS" = "编辑包含关键词";
+"TARGET_ROW_EDIT_CONTAINS" = "包含规则";
 "TARGET_ROW_EDIT_EXCLUDE" = "编辑排除关键词";
 "TARGET_ID_REQUIRED_TITLE" = "缺少接收 id";
 "TARGET_ID_REQUIRED_MSG" = "先填写接收 id，再保存。";
@@ -236,7 +236,7 @@
 "RULES_LIST_EMPTY_TITLE" = "暂无规则";
 "RULES_LIST_EMPTY_DETAIL" = "右上角可直接新增一条。";
 "RULES_LIST_CONTAINS_PLACEHOLDER" = "输入一条需要匹配的消息内容，例如：支付成功";
-"RULES_LIST_EXCLUDE_PLACEHOLDER" = "输入一条不转发的消息内容，例如：验证码";
+"RULES_LIST_EXCLUDE_PLACEHOLDER" = "输入一条不转发的消息内容，例如：推广";
 "RULES_LIST_REGEX_PLACEHOLDER" = "输入一条正则表达式，例如：验证码\\d{4,6}";
 "RULES_LIST_DELETE_CONFIRM_MESSAGE_FORMAT" = "将删除已选中的 %lu 条规则。";
 "RULES_LIST_SELECTED_COUNT_TITLE_FORMAT" = "已选 %lu 条";
@@ -284,7 +284,7 @@
 "RULES_LIST_FORCE_BLOCK_FOOTER" = "命中后转发（优先于排除规则检查）。";
 "RULES_LIST_REGEX_ALLOW_FOOTER" = "命中正则表达式后不转发该通知，保存前会校验语法。";
 
-"RULES_LIST_BLOCK_KEYWORDS_PLACEHOLDER" = "输入需要匹配的内容，例如：推广";
+"RULES_LIST_BLOCK_KEYWORDS_PLACEHOLDER" = "输入需要匹配的内容，例如：验证码";
 "RULES_LIST_ALLOW_EXCEPTION_PLACEHOLDER" = "输入始终不转发的内容，例如：验证码";
 "RULES_LIST_REGEX_BLOCK_PLACEHOLDER" = "输入用于匹配的正则表达式，例如：推广\\d{4,6}";
 "RULES_LIST_ALLOW_KEYWORDS_PLACEHOLDER" = "输入不转发的消息内容，例如：验证码";
@@ -295,7 +295,7 @@
 
 
 
-"TARGET_ROW_EDIT_RULES" = "编辑转发规则";
+"TARGET_ROW_EDIT_RULES" = "编辑包含关键词";
 "TARGET_SECTION_APPS" = "来源 App 白名单";
 "TARGET_APPS_PLACEHOLDER" = "点击选择 App";
 "TARGET_APPS_FOOTER" = "只转发勾选 App 的通知，不勾=全部。";
@@ -304,5 +304,5 @@
 "APP_PICKER_TITLE" = "选择来源 App";
 "TARGET_APPS_BAR_EMPTY" = "点击选择 App";
 
-"RULE_TEXT_REPLY_ONLY_LABEL" = "回复文本（留空 = 纯转发）";
+"RULE_TEXT_REPLY_ONLY_LABEL" = "回复文本";
 "RULE_TEXT_REPLY_ONLY_PLACEHOLDER" = "留空=纯转发；填了=只发这条";

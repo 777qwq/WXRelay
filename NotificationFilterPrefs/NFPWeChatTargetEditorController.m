@@ -39,6 +39,15 @@ typedef NS_ENUM(NSInteger, WPRow) { WPRowID = 0, WPRowContains, WPRowExclude, WP
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = self.targetId.length ? NFPLocalizedString(@"TARGET_EDIT_TITLE") : NFPLocalizedString(@"TARGET_ADD_TITLE");
+    // v2.9.0 App 名缓存预热：首进不显示包标识
+    if (![[NFPAppInfoProvider sharedProvider] hasCachedApplications]) {
+        __weak typeof(self) weakSelf = self;
+        [[NFPAppInfoProvider sharedProvider] refreshApplicationsWithCompletion:^(NSArray *applications) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf.tableView reloadData];
+            });
+        }];
+    }
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:NFPLocalizedString(@"COMMON_SAVE") style:UIBarButtonItemStyleDone target:self action:@selector(saveTapped:)];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow-id"];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:@"wrow-link"];

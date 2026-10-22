@@ -217,7 +217,7 @@ static void WRResolveSelfWxid(void) {
         if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return;
         id me = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getSelfContact));
         if ([me respondsToSelector:@selector(m_nsUsrName)])
-            WRSelfWxid = [[me valueForKey:@"m_nsUsrName"] retain]; // MRC：静态全局必须 retain
+            WRSelfWxid = [[me valueForKey:@"m_nsUsrName"] retain]; // MRC: static strong must retain
         wrLog([NSString stringWithFormat:@"B: self wxid=%@", WRSelfWxid]);
     } @catch (NSException *e) { }
 }
