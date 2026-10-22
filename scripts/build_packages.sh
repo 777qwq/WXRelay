@@ -4,8 +4,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 out_root="$repo_root/out"
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/notificationfilter-packages.XXXXXX")"
-lock_dir="${TMPDIR:-/tmp}/notificationfilter-build.$(printf '%s' "$repo_root" | shasum | awk '{print $1}').lock"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/wxrelay-packages.XXXXXX")"
+lock_dir="${TMPDIR:-/tmp}/wxrelay-build.$(printf '%s' "$repo_root" | shasum | awk '{print $1}').lock"
 lock_acquired=0
 
 cleanup() {

@@ -362,7 +362,7 @@ static void WRInstallMsgSourceHook(void) {
 }
 
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
-__attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
+__attribute__((constructor)) static void wxrelaySenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelaySender ctor");
         WRInitLastSentStore();
