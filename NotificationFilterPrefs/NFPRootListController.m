@@ -12,6 +12,34 @@
 
 @implementation NFPRootListController
 
+// v2.7.3 跳主页取证：进程出生标记（定案后删）
++ (void)load {
+    @try {
+        NSString *line = [NSString stringWithFormat:@"[BIRTH] %@\n", [NSDate date]];
+        NSString *path = @"/var/mobile/Library/wxrelay_birth.log";
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+    } @catch (NSException *e) { }
+}
+
+// v2.7.3 弹栈守卫：切后台存栈快照，回前台栈被弹过则原样弹回（零 hook）
+static __strong NFPRootListController *_jumpAnchor = nil;
+static NSArray<UIViewController *> *_savedStack = nil;
+static __weak UINavigationController *_savedNav = nil;
+static BOOL _paneActive = NO;
+
+static void NFPRemoveJumpObservers(void) {
+    [[NSNotificationCenter defaultCenter] removeObserver:_jumpAnchor];
+}
+
+static void NFPRestoreStackIfPopped(void) {
+    if (!_paneActive || !_savedStack || !_savedNav) return;
+    if (![_savedNav.viewControllers isEqualToArray:_savedStack]) {
+        [_savedNav setViewControllers:_savedStack animated:NO];
+    }
+}
+
 static NSString * const NFPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
 static NSString * const NFPFilteredLogsSpecifierID = @"ROOT_FILTERED_LOGS";
 static NSString * const NFPWeChatTargetsSpecifierID = @"ROOT_WECHAT_TARGETS";
@@ -20,13 +48,43 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = NFPLocalizedString(@"ROOT_TITLE");
-
+    _jumpAnchor = self; // 强持有：栈被弹穿时保命，离开页面时释放
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     // 移出转场帧，避免回退动画被同步刷新打断
     dispatch_async(dispatch_get_main_queue(), ^{ [self reloadSpecifiers]; });
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    if (!_paneActive) {
+        _paneActive = YES;
+        _savedNav = self.navigationController;
+        _savedStack = _savedNav.viewControllers;
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppResign) name:UIApplicationWillResignActiveNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+    }
+}
+
+- (void)jumpAppResign {
+    _savedNav = self.navigationController;
+    _savedStack = _savedNav.viewControllers;
+}
+
+- (void)jumpAppActive {
+    NFPRestoreStackIfPopped();
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    // lastObject == self 说明是被更深层页面覆盖（push），否则 = 返回出本页，守卫退场
+    if (self.navigationController.viewControllers.lastObject != self) return;
+    _paneActive = NO;
+    _savedStack = nil;
+    _jumpAnchor = nil;
+    NFPRemoveJumpObservers();
 }
 
 - (void)dealloc {
