@@ -155,6 +155,17 @@ static BOOL NFTargetAllowsApp(NSDictionary *target, NFNotificationRecord *record
     return NO;
 }
 
+// v2.8.3 泵诊断日志（结案拆）
+static void NFPumpLog(NSString *msg) {
+    @try {
+        NSString *line = [NSString stringWithFormat:@"%@ %@\n", [NSDate date], msg];
+        NSString *path = @"/var/mobile/Library/wxrelay_pump.log";
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+    } @catch (NSException *e) { }
+}
+
 // v2.8.0 模块B：微信端消息源旗标（15 分钟内=微信进程活着，通知源让位，防双发）
 static BOOL NFWeChatMsgSourceAlive(void) {
     NSString *container = NFWeChatContainerPath();
@@ -194,6 +205,7 @@ static void NFPumpWeChatMsgSpool(void) {
                 options:NSJSONReadingAllowFragments error:nil];
             [[NSFileManager defaultManager] removeItemAtPath:p error:nil];
             if (![d isKindOfClass:[NSDictionary class]]) continue;
+            NFPumpLog([NSString stringWithFormat:@"rec: %@ / %@", d[@"title"], d[@"body"]]);
             NSString *bid = [d[@"bid"] isKindOfClass:[NSString class]] ? d[@"bid"] : @"";
             NSString *title = [d[@"title"] isKindOfClass:[NSString class]] ? d[@"title"] : @"";
             if (bid.length == 0 || title.length == 0) continue;
@@ -214,7 +226,7 @@ static void NFPumpWeChatMsgSpool(void) {
 
 static void NFWeChatMsgSpoolCallback(CFNotificationCenterRef __unused c, void __unused *o,
                                      CFStringRef __unused n, const void __unused *obj, CFDictionaryRef __unused ui) {
-    @autoreleasepool { NFPumpWeChatMsgSpool(); }
+    @autoreleasepool { NFPumpLog(@"cb fired"); NFPumpWeChatMsgSpool(); }
 }
 
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
