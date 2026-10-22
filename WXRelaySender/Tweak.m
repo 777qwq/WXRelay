@@ -241,10 +241,13 @@ static void WRSpoolMsgRecord(NSDictionary *record) {
 }
 
 static IMP WRAsyncOnAddMsgOrig = NULL;
+static NSString *WRHookedSelectorName = nil;
 
 static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
     if (WRAsyncOnAddMsgOrig) ((void(*)(id,SEL,id,id))WRAsyncOnAddMsgOrig)(self, _cmd, arg1, wrap);
     @try {
+        // 候选参数序归一：单参候选时 wrap 落在 arg1
+        if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
         if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
         WRWriteMsgSourceFlag();
         // 只收文本（v1）；系统消息/媒体后续需要再说
@@ -280,19 +283,42 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
     }
 }
 
-static void WRInstallMsgSourceHook(void) {
-    Class CMessageMgr = objc_getClass("CMessageMgr");
-    SEL sel = @selector(AsyncOnAddMsg:Wrap:);
-    if (!CMessageMgr || ![CMessageMgr instancesRespondToSelector:sel]) {
-        wrLog(@"B: AsyncOnAddMsg missing, hook skipped");
-        return;
-    }
-    // 纯 runtime swizzle（substrate 不进链），与 prefs 端同款手法
+static BOOL WRHookMsgSourceSelector(Class CMessageMgr, NSString *name) {
+    SEL sel = NSSelectorFromString(name);
+    if (!sel || ![CMessageMgr instancesRespondToSelector:sel]) return NO;
     Method m = class_getInstanceMethod(CMessageMgr, sel);
-    if (!m) { wrLog(@"B: no Method, hook skipped"); return; }
+    if (!m) return NO;
+    if (WRAsyncOnAddMsgOrig) return YES; // 已挂在别的候选上
     WRAsyncOnAddMsgOrig = method_getImplementation(m);
     method_setImplementation(m, (IMP)WRAsyncOnAddMsgHook);
-    wrLog(@"B: AsyncOnAddMsg hook installed");
+    WRHookedSelectorName = name;
+    wrLog([NSString stringWithFormat:@"B: hooked %@", name]);
+    return YES;
+}
+
+static void WRInstallMsgSourceHook(void) {
+    Class CMessageMgr = objc_getClass("CMessageMgr");
+    if (!CMessageMgr) { wrLog(@"B: no CMessageMgr"); return; }
+    // 多候选：8.x 各版本改名全试，命中即挂
+    NSArray *candidates = @[@"AsyncOnAddMsg:Wrap:", @"AsyncOnAddMsg:MsgWrap:",
+                            @"OnNewMessage:", @"AsyncOnAddMsgList:ListWrap:"];
+    for (NSString *name in candidates) {
+        if (WRHookMsgSourceSelector(CMessageMgr, name)) return;
+    }
+    // 全落空：吐出方法表里疑似收消息的入口，下轮锁定真名
+    wrLog(@"B: none of candidates exist; class methods:");
+    unsigned int count = 0;
+    Method *methods = class_copyMethodList(object_getClass(CMessageMgr) ? CMessageMgr : CMessageMgr, &count);
+    unsigned int shown = 0;
+    for (unsigned int i = 0; i < count && shown < 12; i++) {
+        NSString *n = NSStringFromSelector(method_getName(methods[i]));
+        if ([n.lowercaseString containsString:@"addmsg"] || [n.lowercaseString containsString:@"newmessage"]) {
+            wrLog([NSString stringWithFormat:@"B cand: %@", n]);
+            shown++;
+        }
+    }
+    free(methods);
+    if (shown == 0) wrLog(@"B cand: (none matched addmsg/newmessage)");
 }
 
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
