@@ -207,8 +207,9 @@ static void NFWeChatMsgSpoolCallback(CFNotificationCenterRef __unused c, void __
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     // v2.4.9：转发前强制读最新 prefs（锁屏 darwin 排队可能跳过更新）
     NFReloadPreferences();
-    // v2.8.0 模块B：微信进程活着时，微信通知让位（消息源全覆盖，防双发）
-    if ([record.bundleIdentifier isEqualToString:@"com.tencent.xin"] && NFWeChatMsgSourceAlive()) return;
+    // v2.8.2 模块B：微信通知让位，但 wxmsg_ 前缀的 B 记录免检（否则自堵）
+    if ([record.bundleIdentifier isEqualToString:@"com.tencent.xin"] && NFWeChatMsgSourceAlive()
+        && ![record.bulletinID hasPrefix:@"wxmsg_"]) return;
     if (!NFMarkForwardedIfNew(record)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
