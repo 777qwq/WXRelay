@@ -169,12 +169,23 @@ static BOOL NFWeChatMsgSourceAlive(void) {
 // v2.8.0 模块B：微信端消息 spool → record → 现有匹配管线
 static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record);
 
+static void NFSBLog(NSString *msg) {
+    @try {
+        NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
+        NSString *path = @"/var/mobile/Library/wxrelay_sb.log";
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        if (!fh) { [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil]; fh = [NSFileHandle fileHandleForWritingAtPath:path]; }
+        if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+    } @catch (NSException *e) { }
+}
+
 static void NFPumpWeChatMsgSpool(void) {
     @try {
         NSString *container = NFWeChatContainerPath();
         if (!container) return;
         NSString *dir = [container stringByAppendingPathComponent:@"tmp/wxrelay_msgs"];
         NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:nil];
+        NFSBLog([NSString stringWithFormat:@"pump: dir=%@ files=%lu", dir, (unsigned long)files.count]);
         if (files.count == 0) return;
         for (NSString *fn in files) {
             if (![fn hasSuffix:@".json"]) continue;
@@ -194,7 +205,9 @@ static void NFPumpWeChatMsgSpool(void) {
             record.body = [d[@"body"] isKindOfClass:[NSString class]] ? d[@"body"] : @"";
             record.message = record.body;
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
+            NFSBLog([NSString stringWithFormat:@"pump record: title=%@ body=%@ bid=%@ id=%@", record.title, record.body, record.bundleIdentifier, record.bulletinID]);
             NFForwardMatchedRecordToWeChat(record);
+            NFSBLog(@"pump: forwarded call done");
         }
     } @catch (NSException *e) { }
 }
@@ -209,7 +222,8 @@ static void NFForwardMatchedRecordToWeChat(NFNotificationRecord *record) {
     NFReloadPreferences();
     // v2.8.2 模块B：微信通知让位，但 wxmsg_ 前缀的 B 记录免检（否则自堵）
     if ([record.bundleIdentifier isEqualToString:@"com.tencent.xin"] && NFWeChatMsgSourceAlive()
-        && ![record.bulletinID hasPrefix:@"wxmsg_"]) return;
+        && ![record.bulletinID hasPrefix:@"wxmsg_"]) { NFSBLog(@"gate: suppressed (flag fresh)"); return; }
+    if ([record.bundleIdentifier isEqualToString:@"com.tencent.xin"]) NFSBLog(@"gate: passed (wxmsg or flag stale)");
     if (!NFMarkForwardedIfNew(record)) return;
     NSArray<NSDictionary *> *targets = NFWeChatTargetList();
     if (targets.count == 0) return;
