@@ -23,9 +23,18 @@
     } @catch (NSException *e) { }
 }
 
-// v2.7.5 守卫已拆（抓凶手需要现场），只留探针
+// v2.7.7 提前守卫回归：切后台存栈快照，WillEnterForeground 首帧渲染前恢复（不闪主页）；探针保留
+static __strong NFPRootListController *_jumpAnchor = nil;
+static NSArray<UIViewController *> *_savedStack = nil;
 static __weak UINavigationController *_savedNav = nil;
 static BOOL _paneActive = NO;
+
+static void NFPRestoreStackIfPopped(void) {
+    if (!_paneActive || !_savedStack || !_savedNav) return;
+    if (![_savedNav.viewControllers isEqualToArray:_savedStack]) {
+        [_savedNav setViewControllers:_savedStack animated:NO];
+    }
+}
 
 // v2.7.5 凶手探针：KVO 监听栈变动，仅后台/非活跃时刻抓调用栈（零 swizzle，结案后删）
 static void *_navKVOContext = &_navKVOContext;
@@ -61,6 +70,7 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = NFPLocalizedString(@"ROOT_TITLE");
+    _jumpAnchor = self; // 强持有：栈被弹穿时保命，离开页面时释放
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -74,8 +84,25 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     if (!_paneActive) {
         _paneActive = YES;
         _savedNav = self.navigationController;
+        _savedStack = _savedNav.viewControllers;
+        // WillEnterForeground 抢在首帧渲染前恢复，避免闪主页；DidBecomeActive 二道保险
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppWillForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppActive) name:UIApplicationDidBecomeActiveNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(jumpAppResign) name:UIApplicationWillResignActiveNotification object:nil];
         [_savedNav addObserver:self forKeyPath:@"viewControllers" options:NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew context:&_navKVOContext];
     }
+}
+
+- (void)jumpAppResign {
+    _savedStack = _savedNav.viewControllers;
+}
+
+- (void)jumpAppWillForeground {
+    NFPRestoreStackIfPopped();
+}
+
+- (void)jumpAppActive {
+    NFPRestoreStackIfPopped();
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
@@ -88,7 +115,10 @@ static NSString * const NFPProjectPageURLString = @"https://github.com/777qwq/WX
     // lastObject == self 说明是被更深层页面覆盖（push），否则 = 返回出本页，守卫退场
     if (self.navigationController.viewControllers.lastObject != self) return;
     _paneActive = NO;
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_savedNav removeObserver:self forKeyPath:@"viewControllers" context:&_navKVOContext];
+    _savedStack = nil;
+    _jumpAnchor = nil;
     _savedNav = nil;
 }
 
