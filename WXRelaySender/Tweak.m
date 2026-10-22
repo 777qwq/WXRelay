@@ -201,6 +201,23 @@ static NSString *WRContactDisplayName(NSString *wxid) {
     } @catch (NSException *e) { return wxid; }
 }
 
+static NSString *WRSelfWxid = nil;
+
+static void WRResolveSelfWxid(void) {
+    @try {
+        Class CContactMgr = objc_getClass("CContactMgr");
+        Class MMServiceCenter = objc_getClass("MMServiceCenter");
+        if (!CContactMgr || !MMServiceCenter) return;
+        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
+        if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return;
+        id me = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getSelfContact));
+        if ([me respondsToSelector:@selector(m_nsUsrName)])
+            WRSelfWxid = [me valueForKey:@"m_nsUsrName"];
+        wrLog([NSString stringWithFormat:@"B: self wxid=%@", WRSelfWxid]);
+    } @catch (NSException *e) { }
+}
+
 static void WRWriteMsgSourceFlag(void) {
     @try {
         NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_msgsource.flag"];
@@ -279,6 +296,9 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? [wrap valueForKey:@"m_nsFromUsr"] : nil;
         NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsActualUsr)] ? [wrap valueForKey:@"m_nsActualUsr"] : nil;
         if (fromUsr.length == 0) return;
+        // v2.8.7 自身消息防线：来源 wxid 是自己（单聊直发 / 群聊 actualUsr）一律跳过
+        if (WRSelfWxid.length && ([fromUsr isEqualToString:WRSelfWxid]
+            || (actualUsr.length && [actualUsr isEqualToString:WRSelfWxid]))) return;
         BOOL isGroup = [fromUsr hasSuffix:@"@chatroom"];
         NSString *chatName = WRContactDisplayName(fromUsr);
         NSString *speaker = isGroup ? WRContactDisplayName(actualUsr ?: @"") : nil;
@@ -343,6 +363,9 @@ __attribute__((constructor)) static void wxrelayNFSenderCtor(void) {
         wrLog(@"WXRelaySender ctor");
         WRInitLastSentStore();
         WRInstallMsgSourceHook();
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            WRResolveSelfWxid(); // 等微信联系人服务就绪
+        });
         WRWriteMsgSourceFlag();
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,
