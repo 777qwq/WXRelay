@@ -989,12 +989,27 @@ static void WXSceneBidMapPut(NSString *pid, NSString *bid) {
     dispatch_async(WXSceneBidMapQueue, ^{ WXSceneBidMap[pid] = bid; });
 }
 
+static NSString *WXWeChatContainerPath(void);
 static NSString *WXBidForPersistenceID(NSString *pid) {
     WXSceneBidMapInit();
     __block NSString *bid = nil;
     dispatch_sync(WXSceneBidMapQueue, ^{ bid = WXSceneBidMap[pid]; });
     if (bid) return bid;
-    // 未命中：等 FBScene 映射器下次补表（fail-open 放行）
+    // v0.8 兜底：读微信自报的场景 ID 文件（5 秒节流，防反挂起高频读盘）
+    static NSDate *lastRead = nil;
+    static NSString *cachedPID = nil;
+    @try {
+        if (!lastRead || -[lastRead timeIntervalSinceNow] < -5.0) {
+            NSString *container = WXWeChatContainerPath();
+            if (container) {
+                NSString *p = [container stringByAppendingPathComponent:@"tmp/wxrelay_scenepid"];
+                cachedPID = [NSString stringWithContentsOfFile:p encoding:NSUTF8StringEncoding error:nil];
+                if (cachedPID.length == 0) cachedPID = nil;
+                lastRead = [NSDate date];
+            }
+        }
+        if (cachedPID.length && [pid isEqualToString:cachedPID]) return @"com.tencent.xin";
+    } @catch (NSException *e) { }
     return nil;
 }
 

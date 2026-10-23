@@ -278,6 +278,16 @@ static BOOL WRTextWasRecentlySent(NSString *text) {
 
 // v2.8.5 发送中旗标：B hook 见旗标直接跳过（重入/回声釜底抽薪）
 
+// v0.8 保活精准化：微信主动定期上报场景 ID 到文件（不等消息，开了保活就生效）
+static void WRReportScenePIDToFile(void) {
+    @try {
+        NSString *pid = WRWeChatScenePID();
+        if (pid.length == 0) return;
+        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_scenepid"];
+        [pid writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch (NSException *e) { }
+}
+
 // v0.7 保活精准化：微信自报家门（自己场景的 persistenceIdentifier，与 SB 反挂起对象同源）
 static NSString *WRWeChatScenePID(void) {
     @try {
@@ -293,6 +303,7 @@ static NSString *WRWeChatScenePID(void) {
 }
 
 static void WRSpoolMsgRecord(NSDictionary *record) {
+    WRReportScenePIDToFile();
     @try {
         NSString *dir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_msgs"];
         [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
@@ -407,7 +418,12 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
         WRInstallMsgSourceHook();
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
+            WRReportScenePIDToFile(); // v0.8 保活：场景就绪后立即上报
         });
+        // v0.8 保活：每次回前台刷新场景 ID 文件（场景会话可能变化）
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
+            WRReportScenePIDToFile();
+        }];
         WRWriteMsgSourceFlag();
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,

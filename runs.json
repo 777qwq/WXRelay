@@ -1,28 +1,28 @@
 {
-  "total_count": 13,
+  "total_count": 14,
   "workflow_runs": [
     {
-      "id": 39940132889,
+      "id": 39940736750,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTJ4QGQ",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTKdG7g",
       "head_branch": "0.7",
-      "head_sha": "69aff0f8aa6295031f2c7dc749bc3d3805ca5e32",
+      "head_sha": "9de728c8e54baf8cc993ac9f5eddfbeaaf56bc0d",
       "path": ".github/workflows/release.yml",
-      "display_title": "fix: fwd decl for scene map helpers",
-      "run_number": 190,
+      "display_title": "fix: UISceneSession.persistentIdentifier",
+      "run_number": 191,
       "event": "push",
       "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108253288485,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNGYYJQ",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39940132889",
+      "check_suite_id": 108254961059,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNH-dow",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39940736750",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T10:35:01Z",
-      "updated_at": "2026-10-23T10:35:05Z",
+      "created_at": "2026-10-23T10:40:15Z",
+      "updated_at": "2026-10-23T10:40:24Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T10:35:01Z",
+      "run_started_at": "2026-10-23T10:40:15Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108253288485",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108254961059",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "69aff0f8aa6295031f2c7dc749bc3d3805ca5e32",
-        "tree_id": "13700875cf0bbff237505ac87577ff943967b5e9",
-        "message": "fix: fwd decl for scene map helpers",
-        "timestamp": "2026-10-23T10:34:56Z",
+        "id": "9de728c8e54baf8cc993ac9f5eddfbeaaf56bc0d",
+        "tree_id": "80d34c2d92fedec82f37ee5a53a9a33689e1d8fa",
+        "message": "fix: UISceneSession.persistentIdentifier",
+        "timestamp": "2026-10-23T10:40:10Z",
         "author": {
           "name": "mos",
           "email": "mos@local"
