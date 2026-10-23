@@ -197,6 +197,22 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
     [enabledSpecifier setProperty:@YES forKey:PSDefaultValueKey];
     [specifiers addObject:enabledSpecifier];
 
+    // v2.9.0 保活区块：Immortalizer 核心收编 + 原生横幅（微信消息驱动）
+    PSSpecifier *keepAliveGroup = [PSSpecifier emptyGroupSpecifier];
+    [keepAliveGroup setProperty:WXPLocalizedString(@"ROOT_KEEPALIVE_FOOTER") forKey:PSFooterTextGroupKey];
+    [specifiers addObject:keepAliveGroup];
+
+    PSSpecifier *keepAliveSpecifier = [PSSpecifier preferenceSpecifierNamed:WXPLocalizedString(@"ROOT_KEEPALIVE")
+                                                                     target:self
+                                                                        set:@selector(setPreferenceValue:specifier:)
+                                                                        get:@selector(readPreferenceValue:)
+                                                                     detail:nil
+                                                                      cell:PSSwitchCell
+                                                                      edit:nil];
+    [keepAliveSpecifier setProperty:WXKeepAliveEnabledKey forKey:PSKeyNameKey];
+    [keepAliveSpecifier setProperty:@NO forKey:PSDefaultValueKey];
+    [specifiers addObject:keepAliveSpecifier];
+
     PSSpecifier *targetsGroup = [PSSpecifier emptyGroupSpecifier];
     [targetsGroup setProperty:WXPLocalizedString(@"ROOT_TARGETS_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:targetsGroup];

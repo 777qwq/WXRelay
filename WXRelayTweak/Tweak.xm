@@ -12,6 +12,9 @@
 
 static NSDictionary *WXCurrentPreferences = nil;
 static dispatch_queue_t WXPreferencesQueue = nil;
+// v2.9.0 保活区块：Immortalizer 核心收编（反挂起+防杀，仅微信）+ BBBulletin 横幅发布器
+static BOOL WXKeepAliveEnabledFlag = NO;
+static unsigned long long WXLastBulletinDestinations = 0;
 static void *WXBBServerQueueSpecificKey = &WXBBServerQueueSpecificKey;
 static dispatch_queue_t WXBlockedActionQueue = nil;
 static NSMutableDictionary<NSString *, NSNumber *> *WXBlockedActionTimestamps = nil;
@@ -168,6 +171,7 @@ static BOOL WXWeChatMsgSourceAlive(void) {
 
 // v2.8.0 模块B：微信端消息 spool → record → 现有匹配管线
 static void WXForwardMatchedRecordToWeChat(WXNotificationRecord *record);
+static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body);
 
 static void WXPumpWeChatMsgSpool(void) {
     @try {
@@ -202,6 +206,10 @@ static void WXPumpWeChatMsgSpool(void) {
             record.joinedText = [parts componentsJoinedByString:@"\n"];
             record.messageText = record.body;
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
+            // v2.9.0 保活横幅：保活开启时微信不发本地通知，由 SB 侧代发原生公告
+            if (WXKeepAliveEnabledFlag) {
+                WXPublishKeepAliveBulletin(record.title, record.subtitle, record.body);
+            }
             WXForwardMatchedRecordToWeChat(record);
         }
     } @catch (NSException *e) { }
@@ -281,6 +289,8 @@ static void WXUpdatePreferencesSnapshot(NSDictionary *preferences) {
     dispatch_sync(WXPreferencesQueue, ^{
         WXCurrentPreferences = [preferences copy];
     });
+    id ka = preferences[WXKeepAliveEnabledKey];
+    WXKeepAliveEnabledFlag = [ka respondsToSelector:@selector(boolValue)] ? [ka boolValue] : NO;
 }
 
 static void WXReloadPreferences(void) {
@@ -850,6 +860,9 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 }
 
 - (void)publishBulletinRequest:(id)request destinations:(unsigned long long)destinations {
+    // v2.9.0 保活横幅：捕获 BBServer 实例与真实目的地掩码（首次真实流量）
+    if (!WXCurrentBBServer) WXCurrentBBServer = self;
+    if (destinations != 0) WXLastBulletinDestinations = destinations;
     WXNotificationRecord *record = [WXNotificationRecord recordFromNotificationRequest:request];
     WXForwardMatchedRecordToWeChat(record);
     %orig;
@@ -895,6 +908,81 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
     %orig;
 }
 
+%end
+
+%end
+
+// ===== v2.9.0 保活横幅发布器（BBBulletin 路线，探针 0.8/0.9 已真机验证）=====
+static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body) {
+    @try {
+        if (!WXCurrentBBServer || WXLastBulletinDestinations == 0) return;
+        Class bulletinCls = objc_getClass("BBBulletin");
+        Class actionCls = objc_getClass("BBAction");
+        if (!bulletinCls || !actionCls) return;
+        id b = [[bulletinCls alloc] init];
+        NSDate *now = [NSDate date];
+        void (^setKVC)(id, NSString *, id) = ^(id obj, NSString *key, id val) {
+            @try { [(NSObject *)obj setValue:val forKey:key]; } @catch (NSException *e) { }
+        };
+        setKVC(b, @"sectionID", @"com.tencent.xin");
+        setKVC(b, @"title", title.length ? title : @"微信");
+        if (subtitle.length) setKVC(b, @"subtitle", subtitle);
+        setKVC(b, @"message", body ?: @"");
+        setKVC(b, @"showsMessagePreview", @YES);
+        setKVC(b, @"publicationDate", now);
+        setKVC(b, @"date", now);
+        setKVC(b, @"lastInterruptDate", now);
+        setKVC(b, @"recordID", [[NSUUID UUID] UUIDString]);
+        setKVC(b, @"publisherBulletinID", [[NSUUID UUID] UUIDString]);
+        setKVC(b, @"bulletinID", [@"wxmsg_" stringByAppendingString:[[NSUUID UUID] UUIDString]]);
+        // 声音方案1：sound 置 nil → BBServer 按微信通知设置选音，改音自动跟随
+        id action = [actionCls performSelector:@selector(actionWithLaunchBundleID:callblock:)
+                                    withObject:@"com.tencent.xin" withObject:nil];
+        if (action) setKVC(b, @"defaultAction", action);
+        unsigned long long mask = WXLastBulletinDestinations;
+        id server = WXCurrentBBServer;
+        dispatch_async(WXBBServerQueue(), ^{
+            SEL sel = @selector(publishBulletinRequest:destinations:);
+            IMP imp = [server methodForSelector:sel];
+            void (*fn)(id, SEL, id, unsigned long long) = (void (*)(id, SEL, id, unsigned long long))imp;
+            fn(server, sel, b, mask);
+        });
+    } @catch (NSException *e) { }
+}
+
+%group WXKeepAliveHooks
+
+%hook UIMutableApplicationSceneSettings
+- (void)setDeactivationReasons:(unsigned long long)arg1 {
+    if (WXKeepAliveEnabledFlag && arg1 != 0) return; // 阻断挂起：微信场景永不失活
+    %orig;
+}
+%end
+
+%hook SBFluidSwitcherItemContainer
+- (void)setKillable:(BOOL)arg1 {
+    BOOL shouldTerminate = arg1;
+    if (WXKeepAliveEnabledFlag) {
+        @try {
+            id appLayout = [(id)self performSelector:@selector(appLayout)];
+            NSDictionary *bundles = nil;
+            SEL itemsSel = NSSelectorFromString(@"itemsToLayoutAttributesMap");
+            if ([appLayout respondsToSelector:itemsSel]) {
+                IMP itemsImp = [appLayout methodForSelector:itemsSel];
+                bundles = ((id (*)(id, SEL))itemsImp)(appLayout, itemsSel);
+            } else {
+                Ivar ivar = class_getInstanceVariable(object_getClass(appLayout), "_rolesToLayoutItemsMap");
+                if (ivar) bundles = object_getIvar(appLayout, ivar);
+            }
+            for (id displayItem in bundles) {
+                NSString *bid = nil;
+                @try { bid = [displayItem valueForKey:@"bundleIdentifier"]; } @catch (NSException *e) { }
+                if ([bid isEqualToString:@"com.tencent.xin"]) { shouldTerminate = NO; break; }
+            }
+        } @catch (NSException *e) { }
+    }
+    %orig(shouldTerminate);
+}
 %end
 
 %end
@@ -1013,6 +1101,9 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 
         if (objc_getClass("BBServer")) {
             %init(WXBulletinHooks);
+        }
+        if (objc_getClass("UIMutableApplicationSceneSettings") && objc_getClass("SBFluidSwitcherItemContainer")) {
+            %init(WXKeepAliveHooks);
         }
         if (objc_getClass("BBObserver")) {
             %init(WXObserverHooks);

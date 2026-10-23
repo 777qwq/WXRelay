@@ -35,6 +35,7 @@ NSString * const WXPrefShowTrollAppsKey = @"PrefShowTrollApps";
 NSString * const WXWeChatForwardKey = @"WeChatForward";
 NSString * const WXWeChatTargetsKey = @"WeChatTargets";
 NSString * const WXWeChatTargetsListKey = @"WeChatTargetsList";
+NSString * const WXKeepAliveEnabledKey = @"KeepAliveEnabled";
 
 NSString * const WXRulesEnabledKey = @"enabled";
 NSString * const WXRulesContainsKey = @"contains";
@@ -184,7 +185,8 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
         WXLogEntryLimitKey,
         WXPrefOnlyConfiguredAppsKey,
         WXPrefShowSystemAppsKey,
-        WXPrefShowTrollAppsKey
+        WXPrefShowTrollAppsKey,
+        WXKeepAliveEnabledKey
     ];
 }
 
@@ -194,6 +196,7 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
         WXGlobalRulesEnabledKey: @NO,
         WXGlobalContainsKey: @[],
         WXWeChatForwardKey: @NO,
+        WXKeepAliveEnabledKey: @NO,
         WXWeChatTargetsKey: @"",
         WXGlobalExcludeKey: @[],
         WXGlobalRegexKey: @[],

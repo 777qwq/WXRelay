@@ -273,3 +273,7 @@
 
 "RULE_TEXT_REPLY_ONLY_LABEL" = "Reply-only text (no original forwarded)";
 "RULE_TEXT_REPLY_ONLY_PLACEHOLDER" = "Only this text is sent on match";
+
+/* v2.9.0 keep-alive */
+"ROOT_KEEPALIVE" = "WeChat Keep-alive";
+"ROOT_KEEPALIVE_FOOTER" = "While enabled, WeChat stays resident when locked/backgrounded and incoming messages appear as native banners (WeChat icon, tap to open, works on lock screen). Sound follows Settings → Notifications → WeChat. Note: all background apps stay resident while enabled; slight battery cost.";

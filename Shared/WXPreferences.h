@@ -23,6 +23,7 @@ extern NSString * const WXPrefShowTrollAppsKey;
 extern NSString * const WXWeChatForwardKey;
 extern NSString * const WXWeChatTargetsKey;
 extern NSString * const WXWeChatTargetsListKey;
+extern NSString * const WXKeepAliveEnabledKey;
 
 extern NSString * const WXRulesEnabledKey;
 extern NSString * const WXRulesContainsKey;

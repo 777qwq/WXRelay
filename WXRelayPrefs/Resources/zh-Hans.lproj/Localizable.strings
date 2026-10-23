@@ -306,3 +306,7 @@
 
 "RULE_TEXT_REPLY_ONLY_LABEL" = "回复文本";
 "RULE_TEXT_REPLY_ONLY_PLACEHOLDER" = "留空=纯转发；填了=只发这条";
+
+/* v2.9.0 保活区块 */
+"ROOT_KEEPALIVE" = "微信保活";
+"ROOT_KEEPALIVE_FOOTER" = "开启后微信锁屏/后台不被冻结，来消息由系统弹原生横幅（微信图标、点击直达微信，锁屏同样生效）。提示音跟随 设置→通知→微信 的声音配置。开启期间所有后台 App 均不冻结，耗电略增。";
