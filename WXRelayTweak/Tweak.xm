@@ -952,9 +952,17 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
 
 %group WXKeepAliveHooks
 
-%hook UIMutableApplicationSceneSettings
-- (void)setDeactivationReasons:(unsigned long long)arg1 {
-    if (WXKeepAliveEnabledFlag && arg1 != 0) return; // 阻断挂起：微信场景永不失活
+%hook FBScene
+// v0.4 保活核心（Immortalizer 同款）：微信场景的后台化设置更新整体吞掉，场景永远收不到失活通知
+- (void)updateSettings:(id)arg1 withTransitionContext:(id)arg2 completion:(id)arg3 {
+    if (WXKeepAliveEnabledFlag && arg2 == nil) {
+        NSString *bid = nil;
+        @try {
+            id process = [(id)self performSelector:@selector(clientProcess)];
+            bid = [process valueForKey:@"bundleIdentifier"];
+        } @catch (NSException *e) { }
+        if ([bid isEqualToString:@"com.tencent.xin"]) return;
+    }
     %orig;
 }
 %end
@@ -1102,7 +1110,7 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
         if (objc_getClass("BBServer")) {
             %init(WXBulletinHooks);
         }
-        if (objc_getClass("UIMutableApplicationSceneSettings") && objc_getClass("SBFluidSwitcherItemContainer")) {
+        if (objc_getClass("FBScene") && objc_getClass("SBFluidSwitcherItemContainer")) {
             %init(WXKeepAliveHooks);
         }
         if (objc_getClass("BBObserver")) {
