@@ -1,28 +1,28 @@
 {
-  "total_count": 9,
+  "total_count": 10,
   "workflow_runs": [
     {
-      "id": 39936881476,
+      "id": 39937453064,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTGxzRA",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTHUsCA",
       "head_branch": "0.5",
-      "head_sha": "40f5d8578070bb21ea717d62169279affd0b7b0e",
+      "head_sha": "9d33a47f75218668bca3c34a15a67b6f1c2dcb15",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.5: 反挂起精准化（persistenceIdentifier→场景工作区反查 bundle，仅拦微信）+ prefs 读写统一文件…",
-      "run_number": 186,
+      "display_title": "v0.5 fix: KeepAliveEnabled 补归一化条目（保存被 normalization 打回默认的真凶），撤销误加的重复读写方法",
+      "run_number": 187,
       "event": "push",
-      "status": "in_progress",
+      "status": "queued",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108244343991,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZM92ctw",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39936881476",
+      "check_suite_id": 108245946202,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZM_YPWg",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39937453064",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T10:07:46Z",
-      "updated_at": "2026-10-23T10:07:50Z",
+      "created_at": "2026-10-23T10:12:34Z",
+      "updated_at": "2026-10-23T10:12:34Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T10:07:46Z",
+      "run_started_at": "2026-10-23T10:12:34Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108244343991",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108245946202",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "40f5d8578070bb21ea717d62169279affd0b7b0e",
-        "tree_id": "6879a588eba1f4ddc7172744b19cb983c4226b84",
-        "message": "v0.5: 反挂起精准化（persistenceIdentifier→场景工作区反查 bundle，仅拦微信）+ prefs 读写统一文件域（修开关不保持）",
-        "timestamp": "2026-10-23T10:07:41Z",
+        "id": "9d33a47f75218668bca3c34a15a67b6f1c2dcb15",
+        "tree_id": "7c72a490204f26f0c50d5ee4d3f1bda0a70388ff",
+        "message": "v0.5 fix: KeepAliveEnabled 补归一化条目（保存被 normalization 打回默认的真凶），撤销误加的重复读写方法",
+        "timestamp": "2026-10-23T10:12:29Z",
         "author": {
           "name": "mos",
           "email": "mos@local"
