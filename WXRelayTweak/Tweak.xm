@@ -171,7 +171,7 @@ static BOOL WXWeChatMsgSourceAlive(void) {
 
 // v2.8.0 模块B：微信端消息 spool → record → 现有匹配管线
 static void WXForwardMatchedRecordToWeChat(WXNotificationRecord *record);
-static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body);
+static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body, NSString *bulletinID);
 static void WXSceneBidMapPut(NSString *pid, NSString *bid);
 
 static void WXPumpWeChatMsgSpool(void) {
@@ -214,7 +214,7 @@ static void WXPumpWeChatMsgSpool(void) {
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
             // v2.9.0 保活横幅：保活开启时微信不发本地通知，由 SB 侧代发原生公告
             if (WXKeepAliveEnabledFlag) {
-                WXPublishKeepAliveBulletin(record.title, record.subtitle, record.body);
+                WXPublishKeepAliveBulletin(record.title, record.subtitle, record.body, record.bulletinID);
             }
             WXForwardMatchedRecordToWeChat(record);
         }
@@ -919,7 +919,7 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 %end
 
 // ===== v2.9.0 保活横幅发布器（BBBulletin 路线，探针 0.8/0.9 已真机验证）=====
-static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body) {
+static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body, NSString *bulletinID) {
     @try {
         if (!WXCurrentBBServer || WXLastBulletinDestinations == 0) return;
         Class bulletinCls = objc_getClass("BBBulletin");
@@ -940,7 +940,8 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
         setKVC(b, @"lastInterruptDate", now);
         setKVC(b, @"recordID", [[NSUUID UUID] UUIDString]);
         setKVC(b, @"publisherBulletinID", [[NSUUID UUID] UUIDString]);
-        setKVC(b, @"bulletinID", [@"wxmsg_" stringByAppendingString:[[NSUUID UUID] UUIDString]]);
+        // 用消息 msgid 做横幅 ID：同一消息重复投递自动合并（修一条消息两条横幅）
+        setKVC(b, @"bulletinID", bulletinID.length ? bulletinID : [@"wxmsg_" stringByAppendingString:[[NSUUID UUID] UUIDString]]);
         // 声音方案1：sound 置 nil → BBServer 按微信通知设置选音，改音自动跟随
         id action = [actionCls performSelector:@selector(actionWithLaunchBundleID:callblock:)
                                     withObject:@"com.tencent.xin" withObject:nil];
@@ -998,13 +999,25 @@ static NSString *WXBidForPersistenceID(NSString *pid) {
 
 %group WXKeepAliveHooks
 
+// v0.10 保活双腿还原（Immortalizer 原版组合，单腿两次实证不足）：
+// 腿1 全局反挂起（拦截失活原因写入——全局，与原版一致）
 %hook UIMutableApplicationSceneSettings
 - (void)setDeactivationReasons:(unsigned long long)arg1 {
-    if (WXKeepAliveEnabledFlag && arg1 != 0) {
-        NSString *pid = nil;
-        @try { pid = [(id)self valueForKey:@"persistenceIdentifier"]; } @catch (NSException *e) { }
-        NSString *bid = pid ? WXBidForPersistenceID(pid) : nil;
-        if ([bid isEqualToString:@"com.tencent.xin"]) return; // 微信场景：吞掉失活
+    if (WXKeepAliveEnabledFlag && arg1 != 0) return;
+    %orig;
+}
+%end
+
+// 腿2 FBScene 精准阻断（仅微信：吞后台化设置更新）
+%hook FBScene
+- (void)updateSettings:(id)arg1 withTransitionContext:(id)arg2 completion:(id)arg3 {
+    if (WXKeepAliveEnabledFlag && arg2 == nil) {
+        NSString *bid = nil;
+        @try {
+            id process = [(id)self performSelector:@selector(clientProcess)];
+            bid = [process valueForKey:@"bundleIdentifier"];
+        } @catch (NSException *e) { }
+        if ([bid isEqualToString:@"com.tencent.xin"]) return;
     }
     %orig;
 }

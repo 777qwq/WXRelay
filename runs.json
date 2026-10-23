@@ -1,28 +1,28 @@
 {
-  "total_count": 17,
+  "total_count": 18,
   "workflow_runs": [
     {
-      "id": 39945656381,
+      "id": 39947342378,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTPJYPQ",
-      "head_branch": "0.9",
-      "head_sha": "ce5077a765f7243a87b8b1024306933e1e7a1f06",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTQwSKg",
+      "head_branch": "0.10",
+      "head_sha": "674268cb65344029c321cdb07834e4e9a4990e87",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.9: 修场景文件重读节流条件（比较符写反导致缓存空值永不刷新——微信 pid 已实证对上，此行修复后兜底生效）",
-      "run_number": 194,
+      "display_title": "v0.10: 剥离 ka 调试日志与无用 import，功能定版",
+      "run_number": 195,
       "event": "push",
       "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108268588298,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNU-NCg",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39945656381",
+      "check_suite_id": 108273267906,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNZb0wg",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39947342378",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39947342378",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T11:22:47Z",
-      "updated_at": "2026-10-23T11:22:50Z",
+      "created_at": "2026-10-23T11:37:09Z",
+      "updated_at": "2026-10-23T11:37:13Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T11:22:47Z",
+      "run_started_at": "2026-10-23T11:37:09Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108268588298",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39947342378/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39947342378/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108273267906",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39947342378/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39947342378/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39947342378/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "ce5077a765f7243a87b8b1024306933e1e7a1f06",
-        "tree_id": "cad15f717ba8a3ca2553d90b2fc7ea2cbb7288f7",
-        "message": "v0.9: 修场景文件重读节流条件（比较符写反导致缓存空值永不刷新——微信 pid 已实证对上，此行修复后兜底生效）",
-        "timestamp": "2026-10-23T11:22:42Z",
+        "id": "674268cb65344029c321cdb07834e4e9a4990e87",
+        "tree_id": "bfcab6a246a39b772964bb89fd3faf5f5b4bed7a",
+        "message": "v0.10: 剥离 ka 调试日志与无用 import，功能定版",
+        "timestamp": "2026-10-23T11:37:05Z",
         "author": {
           "name": "mos",
           "email": "mos@local"
