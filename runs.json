@@ -1,28 +1,28 @@
 {
-  "total_count": 8,
+  "total_count": 9,
   "workflow_runs": [
     {
-      "id": 39931269794,
+      "id": 39936881476,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTBbSog",
-      "head_branch": "0.4",
-      "head_sha": "c864c2c1a70774661b66be7e793e9aa5c4113040",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTGxzRA",
+      "head_branch": "0.5",
+      "head_sha": "40f5d8578070bb21ea717d62169279affd0b7b0e",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.4: prefs Info.plist 版本对齐（CI 三处校验）",
-      "run_number": 185,
+      "display_title": "v0.5: 反挂起精准化（persistenceIdentifier→场景工作区反查 bundle，仅拦微信）+ prefs 读写统一文件…",
+      "run_number": 186,
       "event": "push",
       "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108228914500,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZMvItRA",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39931269794",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39931269794",
+      "check_suite_id": 108244343991,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZM92ctw",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39936881476",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T09:21:29Z",
-      "updated_at": "2026-10-23T09:21:34Z",
+      "created_at": "2026-10-23T10:07:46Z",
+      "updated_at": "2026-10-23T10:07:50Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T09:21:29Z",
+      "run_started_at": "2026-10-23T10:07:46Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39931269794/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39931269794/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108228914500",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39931269794/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39931269794/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39931269794/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108244343991",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "c864c2c1a70774661b66be7e793e9aa5c4113040",
-        "tree_id": "102b26d598ff60cf954e5073cb76c26566271f68",
-        "message": "v0.4: prefs Info.plist 版本对齐（CI 三处校验）",
-        "timestamp": "2026-10-23T09:21:24Z",
+        "id": "40f5d8578070bb21ea717d62169279affd0b7b0e",
+        "tree_id": "6879a588eba1f4ddc7172744b19cb983c4226b84",
+        "message": "v0.5: 反挂起精准化（persistenceIdentifier→场景工作区反查 bundle，仅拦微信）+ prefs 读写统一文件域（修开关不保持）",
+        "timestamp": "2026-10-23T10:07:41Z",
         "author": {
           "name": "mos",
           "email": "mos@local"

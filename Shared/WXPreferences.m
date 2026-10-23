@@ -671,6 +671,9 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
     if ([rawPreferences[WXWeChatForwardKey] respondsToSelector:@selector(boolValue)]) {
         normalizedPreferences[WXWeChatForwardKey] = @([rawPreferences[WXWeChatForwardKey] boolValue]);
     }
+    if ([rawPreferences[WXKeepAliveEnabledKey] respondsToSelector:@selector(boolValue)]) {
+        normalizedPreferences[WXKeepAliveEnabledKey] = @([rawPreferences[WXKeepAliveEnabledKey] boolValue]);
+    }
     if ([rawPreferences[WXWeChatTargetsKey] isKindOfClass:[NSString class]]) {
         normalizedPreferences[WXWeChatTargetsKey] = rawPreferences[WXWeChatTargetsKey];
     }

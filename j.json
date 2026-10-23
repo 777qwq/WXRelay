@@ -1,0 +1,161 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 120358481737,
+      "run_id": 39936881476,
+      "workflow_name": "Release",
+      "head_branch": "0.5",
+      "run_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39936881476",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVQbFis8AAAAcBeyvSQ",
+      "head_sha": "40f5d8578070bb21ea717d62169279affd0b7b0e",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/jobs/120358481737",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39936881476/job/120358481737",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-23T10:07:47Z",
+      "started_at": "2026-10-23T10:07:49Z",
+      "completed_at": "2026-10-23T10:11:01Z",
+      "name": "build-and-release",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-23T10:07:49Z",
+          "completed_at": "2026-10-23T10:07:51Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-23T10:07:51Z",
+          "completed_at": "2026-10-23T10:07:54Z"
+        },
+        {
+          "name": "Select Xcode",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-23T10:07:54Z",
+          "completed_at": "2026-10-23T10:07:54Z"
+        },
+        {
+          "name": "Install packaging tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-23T10:07:54Z",
+          "completed_at": "2026-10-23T10:08:03Z"
+        },
+        {
+          "name": "Cache roothide Theos",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-23T10:08:03Z",
+          "completed_at": "2026-10-23T10:08:03Z"
+        },
+        {
+          "name": "Prepare roothide Theos",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-23T10:08:03Z",
+          "completed_at": "2026-10-23T10:08:32Z"
+        },
+        {
+          "name": "Export Theos path",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-23T10:08:32Z",
+          "completed_at": "2026-10-23T10:08:32Z"
+        },
+        {
+          "name": "Verify release tag matches project version",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-23T10:08:32Z",
+          "completed_at": "2026-10-23T10:08:32Z"
+        },
+        {
+          "name": "Probe build environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-23T10:08:32Z",
+          "completed_at": "2026-10-23T10:08:32Z"
+        },
+        {
+          "name": "Build packages",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 10,
+          "started_at": "2026-10-23T10:08:32Z",
+          "completed_at": "2026-10-23T10:10:58Z"
+        },
+        {
+          "name": "Verify expected release assets",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-23T10:10:58Z",
+          "completed_at": "2026-10-23T10:10:58Z"
+        },
+        {
+          "name": "Generate release notes",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-10-23T10:10:58Z",
+          "completed_at": "2026-10-23T10:10:58Z"
+        },
+        {
+          "name": "Publish GitHub Release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 13,
+          "started_at": "2026-10-23T10:10:58Z",
+          "completed_at": "2026-10-23T10:10:58Z"
+        },
+        {
+          "name": "Post Cache roothide Theos",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 25,
+          "started_at": "2026-10-23T10:10:58Z",
+          "completed_at": "2026-10-23T10:10:58Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-10-23T10:10:58Z",
+          "completed_at": "2026-10-23T10:10:59Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-10-23T10:10:59Z",
+          "completed_at": "2026-10-23T10:10:59Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/777qwq/WXRelay/check-runs/120358481737",
+      "labels": [
+        "macos-14"
+      ],
+      "runner_id": 1000002585,
+      "runner_name": "GitHub Actions 1000002585",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

@@ -175,27 +175,6 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
                                       (unsigned long)[WXLogStore loadEntries].count];
 }
 
-// v0.5 统一 prefs 读写：PSSwitchCell 默认走 CFPreferences/cfprefsd 域，与插件本体的
-// WXPreferences 直接文件读写不同源（开关状态重进即丢）。覆写这对方法，全部收敛到文件域。
-- (id)readPreferenceValue:(PSSpecifier *)specifier {
-    NSString *key = [specifier propertyForKey:PSKeyNameKey];
-    if (!key.length) return [super readPreferenceValue:specifier] ?: @NO;
-    NSDictionary *prefs = [WXPreferences loadPreferences];
-    id value = prefs[key];
-    if (value == nil) value = [specifier propertyForKey:PSDefaultValueKey] ?: @NO;
-    return value;
-}
-
-- (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
-    NSString *key = [specifier propertyForKey:PSKeyNameKey];
-    if (!key.length) { [super setPreferenceValue:value specifier:specifier]; return; }
-    NSMutableDictionary *preferences = [WXPreferences loadMutablePreferences];
-    preferences[key] = value;
-    NSError *error = nil;
-    if (![WXPreferences savePreferences:preferences error:&error]) return;
-    [WXPreferences postPreferencesChangedNotification];
-}
-
 - (NSArray *)specifiers {
     if (_specifiers) {
         return _specifiers;
