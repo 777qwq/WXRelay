@@ -999,7 +999,7 @@ static NSString *WXBidForPersistenceID(NSString *pid) {
     static NSDate *lastRead = nil;
     static NSString *cachedPID = nil;
     @try {
-        if (!lastRead || -[lastRead timeIntervalSinceNow] < -5.0) {
+        if (!lastRead || -[lastRead timeIntervalSinceNow] > 5.0) {
             NSString *container = WXWeChatContainerPath();
             if (container) {
                 NSString *p = [container stringByAppendingPathComponent:@"tmp/wxrelay_scenepid"];
