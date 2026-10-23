@@ -15,6 +15,9 @@ static dispatch_queue_t WXPreferencesQueue = nil;
 // v2.9.0 保活区块：Immortalizer 核心收编（反挂起+防杀，仅微信）+ BBBulletin 横幅发布器
 static BOOL WXKeepAliveEnabledFlag = NO;
 static unsigned long long WXLastBulletinDestinations = 0;
+// v0.14 声音三级取音：微信原声 → 任意真实公告声 → 静默
+static id WXWeChatSound = nil;
+static id WXLastAnySound = nil;
 static void *WXBBServerQueueSpecificKey = &WXBBServerQueueSpecificKey;
 static dispatch_queue_t WXBlockedActionQueue = nil;
 static NSMutableDictionary<NSString *, NSNumber *> *WXBlockedActionTimestamps = nil;
@@ -866,6 +869,12 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
     // v2.9.0 保活横幅：捕获 BBServer 实例与真实目的地掩码
     if (!WXCurrentBBServer) WXCurrentBBServer = self;
     if (destinations != 0) WXLastBulletinDestinations = destinations;
+    @try {
+        id snd = [request valueForKey:@"sound"];
+        if (snd) { WXLastAnySound = snd; }
+        NSString *sec = [request valueForKey:@"sectionIdentifier"];
+        if ([sec isEqualToString:@"com.tencent.xin"] && snd) WXWeChatSound = snd;
+    } @catch (NSException *e) { }
     WXNotificationRecord *record = [WXNotificationRecord recordFromNotificationRequest:request];
     WXForwardMatchedRecordToWeChat(record);
     %orig;
@@ -874,6 +883,11 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 - (void)_publishBulletinRequest:(id)request forSectionID:(id)sectionIdentifier forDestinations:(unsigned long long)destinations {
     if (!WXCurrentBBServer) WXCurrentBBServer = self;
     if (destinations != 0) WXLastBulletinDestinations = destinations;
+    @try {
+        id snd = [request valueForKey:@"sound"];
+        if (snd) { WXLastAnySound = snd; }
+        if ([sectionIdentifier isEqualToString:@"com.tencent.xin"] && snd) WXWeChatSound = snd;
+    } @catch (NSException *e) { }
         %orig;
 }
 
@@ -884,6 +898,12 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 - (void)publishBulletin:(id)bulletin destinations:(unsigned long long)destinations {
     if (!WXCurrentBBServer) WXCurrentBBServer = self;
     if (destinations != 0) WXLastBulletinDestinations = destinations;
+    @try {
+        id snd = [bulletin valueForKey:@"sound"];
+        if (snd) { WXLastAnySound = snd; }
+        NSString *sec = [bulletin valueForKey:@"sectionIdentifier"];
+        if ([sec isEqualToString:@"com.tencent.xin"] && snd) WXWeChatSound = snd;
+    } @catch (NSException *e) { }
     WXNotificationRecord *record = [WXNotificationRecord recordFromBulletin:bulletin];
     WXForwardMatchedRecordToWeChat(record);
     %orig;
@@ -945,7 +965,9 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
         setKVC(b, @"publisherBulletinID", [[NSUUID UUID] UUIDString]);
         // 用消息 msgid 做横幅 ID：同一消息重复投递自动合并（修一条消息两条横幅）
         setKVC(b, @"bulletinID", bulletinID.length ? bulletinID : [@"wxmsg_" stringByAppendingString:[[NSUUID UUID] UUIDString]]);
-        // 声音方案1：sound 置 nil → BBServer 按微信通知设置选音，改音自动跟随
+        // v0.14 声音三级取音：微信原声 → 任意真实公告声 → nil
+        id snd = WXWeChatSound ?: WXLastAnySound;
+        if (snd) setKVC(b, @"sound", snd);
         id action = [actionCls performSelector:@selector(actionWithLaunchBundleID:callblock:)
                                     withObject:@"com.tencent.xin" withObject:nil];
         if (action) setKVC(b, @"defaultAction", action);

@@ -1,28 +1,28 @@
 {
-  "total_count": 22,
+  "total_count": 23,
   "workflow_runs": [
     {
-      "id": 39967984220,
+      "id": 39969655098,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTkcKXA",
-      "head_branch": "0.12",
-      "head_sha": "c52f3cc7dcb1931cac528f575d3a3ae48b83fbaf",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTmCJOg",
+      "head_branch": "0.13",
+      "head_sha": "c842be7ae221991d378dd91061db6a69578fc605",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.12: BBServer 捕获扩到全部发布钩子 + 掩码兜底 0x1ce（修 respring 后无真实流量时横幅静默跳过）",
-      "run_number": 199,
+      "display_title": "v0.13: BBServer 实例改为开机确定性捕获（_addDataProvider 钩内），根除对真实通知流量的依赖",
+      "run_number": 200,
       "event": "push",
       "status": "queued",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108331695552,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZORJ9wA",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39967984220",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39967984220",
+      "check_suite_id": 108336503235,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZOVvZww",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39969655098",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39969655098",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T14:14:50Z",
-      "updated_at": "2026-10-23T14:14:50Z",
+      "created_at": "2026-10-23T14:26:34Z",
+      "updated_at": "2026-10-23T14:26:34Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T14:14:50Z",
+      "run_started_at": "2026-10-23T14:26:34Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39967984220/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39967984220/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108331695552",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39967984220/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39967984220/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39967984220/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39969655098/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39969655098/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108336503235",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39969655098/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39969655098/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39969655098/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "c52f3cc7dcb1931cac528f575d3a3ae48b83fbaf",
-        "tree_id": "c0590ee71faa14af9a478095bfff42347c8a951b",
-        "message": "v0.12: BBServer 捕获扩到全部发布钩子 + 掩码兜底 0x1ce（修 respring 后无真实流量时横幅静默跳过）",
-        "timestamp": "2026-10-23T14:14:44Z",
+        "id": "c842be7ae221991d378dd91061db6a69578fc605",
+        "tree_id": "06ad7ee0b1d46bffd6f00c0799584f9e28690df2",
+        "message": "v0.13: BBServer 实例改为开机确定性捕获（_addDataProvider 钩内），根除对真实通知流量的依赖",
+        "timestamp": "2026-10-23T14:26:28Z",
         "author": {
           "name": "mos",
           "email": "mos@local"
