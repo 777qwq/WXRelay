@@ -174,6 +174,8 @@ static BOOL WXWeChatMsgSourceAlive(void) {
 // v2.8.0 模块B：微信端消息 spool → record → 现有匹配管线
 static void WXForwardMatchedRecordToWeChat(WXNotificationRecord *record);
 static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body);
+static void WXSceneBidMapPut(NSString *pid, NSString *bid);
+static void WXKALog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1,2);
 
 static void WXPumpWeChatMsgSpool(void) {
     @try {

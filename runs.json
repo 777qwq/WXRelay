@@ -1,28 +1,28 @@
 {
-  "total_count": 11,
+  "total_count": 12,
   "workflow_runs": [
     {
-      "id": 39938526412,
+      "id": 39939663935,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTIWMzA",
-      "head_branch": "0.6",
-      "head_sha": "ea876cb3754a2896704aa266f7e9e38f0b6ef099",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTJboPw",
+      "head_branch": "0.7",
+      "head_sha": "c6bb0247c8301e5a7a4909e1bbc52ea4b2b2c2c6",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.6: 场景映射表（FBScene updateSettings 记录 pid↔bid，反挂起查表精准拦微信），移除失效的 FBSce…",
-      "run_number": 188,
+      "display_title": "v0.7: 保活身份改微信自报（UIWindowScene.session.persistenceIdentifier 随消息上送建映射）…",
+      "run_number": 189,
       "event": "push",
       "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108248929163,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNCOTiw",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39938526412",
+      "check_suite_id": 108252015987,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNFKtcw",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39939663935",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T10:21:34Z",
-      "updated_at": "2026-10-23T10:21:37Z",
+      "created_at": "2026-10-23T10:31:03Z",
+      "updated_at": "2026-10-23T10:31:06Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T10:21:34Z",
+      "run_started_at": "2026-10-23T10:31:03Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108248929163",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108252015987",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "ea876cb3754a2896704aa266f7e9e38f0b6ef099",
-        "tree_id": "92eaa086c2cc53261a647bbfcbad69480bbcfafb",
-        "message": "v0.6: 场景映射表（FBScene updateSettings 记录 pid↔bid，反挂起查表精准拦微信），移除失效的 FBSceneManager 直查",
-        "timestamp": "2026-10-23T10:21:28Z",
+        "id": "c6bb0247c8301e5a7a4909e1bbc52ea4b2b2c2c6",
+        "tree_id": "5749113a84ddd00f10dd62ca2e73204721719c65",
+        "message": "v0.7: 保活身份改微信自报（UIWindowScene.session.persistenceIdentifier 随消息上送建映射），删除静默的 FBScene 映射器",
+        "timestamp": "2026-10-23T10:30:58Z",
         "author": {
           "name": "mos",
           "email": "mos@local"
