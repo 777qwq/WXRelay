@@ -849,6 +849,8 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 %hook BBServer
 
 - (void)_addDataProvider:(id)dataProvider sortSectionsNow:(BOOL)sortSections {
+    // v0.13：BBServer 开机注册数据源时必然经过这里——确定性捕获实例（不等真实通知流量）
+    if (!WXCurrentBBServer) WXCurrentBBServer = self;
     @try {
         if (dataProvider) {
             WXRememberNotificationHistoryDataProvider(dataProvider);
