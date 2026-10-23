@@ -1,3 +1,5 @@
+#import <fcntl.h>
+#import <unistd.h>
 #import <Foundation/Foundation.h>
 #import <dlfcn.h>
 #import <string.h>
@@ -950,18 +952,51 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
     } @catch (NSException *e) { }
 }
 
+// v0.5 反挂起精准化：persistenceIdentifier → FBSceneManager 场景工作区反查 bundle
+static NSString *WXPersistenceLogPath = @"/var/mobile/Library/Logs/wxrelay_ka.log";
+static void WXKALog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1,2);
+static void WXKALog(NSString *fmt, ...) {
+    va_list args; va_start(args, fmt);
+    NSString *line = [[NSString alloc] initWithFormat:fmt arguments:args];
+    va_end(args);
+    NSString *ts = [NSDateFormatter localizedStringFromDate:[NSDate date] dateStyle:NSDateFormatterNoStyle timeStyle:NSDateFormatterMediumStyle];
+    NSData *d = [[NSString stringWithFormat:@"[%@] %@\n", ts, line] dataUsingEncoding:NSUTF8StringEncoding];
+    int fd = open([WXPersistenceLogPath fileSystemRepresentation], O_WRONLY | O_APPEND | O_CREAT, 0644);
+    if (fd >= 0) { write(fd, d.bytes, d.length); close(fd); }
+}
+
+static NSString *WXBidForPersistenceID(NSString *pid) {
+    @try {
+        Class mgrCls = objc_getClass("FBSceneManager");
+        if (!mgrCls) return nil;
+        id mgr = [(id)mgrCls performSelector:@selector(sharedInstance)];
+        if (!mgr) return nil;
+        id workspace = [mgr valueForKey:@"_workspace"];
+        id allScenes = [workspace valueForKey:@"_allScenesByID"];
+        if (![allScenes isKindOfClass:[NSDictionary class]]) return nil;
+        for (id key in allScenes) {
+            id scene = [allScenes objectForKey:key];
+            NSString *p = nil;
+            @try { p = [scene valueForKey:@"persistenceIdentifier"]; } @catch (NSException *e) { }
+            if ([p isEqualToString:pid]) {
+                id proc = [scene valueForKey:@"clientProcess"];
+                return [proc valueForKey:@"bundleIdentifier"];
+            }
+        }
+    } @catch (NSException *e) { }
+    return nil;
+}
+
 %group WXKeepAliveHooks
 
-%hook FBScene
-// v0.4 保活核心（Immortalizer 同款）：微信场景的后台化设置更新整体吞掉，场景永远收不到失活通知
-- (void)updateSettings:(id)arg1 withTransitionContext:(id)arg2 completion:(id)arg3 {
-    if (WXKeepAliveEnabledFlag && arg2 == nil) {
-        NSString *bid = nil;
-        @try {
-            id process = [(id)self performSelector:@selector(clientProcess)];
-            bid = [process valueForKey:@"bundleIdentifier"];
-        } @catch (NSException *e) { }
-        if ([bid isEqualToString:@"com.tencent.xin"]) return;
+%hook UIMutableApplicationSceneSettings
+- (void)setDeactivationReasons:(unsigned long long)arg1 {
+    if (WXKeepAliveEnabledFlag && arg1 != 0) {
+        NSString *pid = nil;
+        @try { pid = [(id)self valueForKey:@"persistenceIdentifier"]; } @catch (NSException *e) { }
+        NSString *bid = pid ? WXBidForPersistenceID(pid) : nil;
+        WXKALog(@"deact reasons=%llu pid=%@ bid=%@", arg1, pid, bid);
+        if ([bid isEqualToString:@"com.tencent.xin"]) return; // 微信场景：吞掉失活
     }
     %orig;
 }
@@ -1110,7 +1145,7 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
         if (objc_getClass("BBServer")) {
             %init(WXBulletinHooks);
         }
-        if (objc_getClass("FBScene") && objc_getClass("SBFluidSwitcherItemContainer")) {
+        if (objc_getClass("UIMutableApplicationSceneSettings") && objc_getClass("SBFluidSwitcherItemContainer")) {
             %init(WXKeepAliveHooks);
         }
         if (objc_getClass("BBObserver")) {
