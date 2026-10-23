@@ -172,7 +172,6 @@ static BOOL WXWeChatMsgSourceAlive(void) {
 // v2.8.0 模块B：微信端消息 spool → record → 现有匹配管线
 static void WXForwardMatchedRecordToWeChat(WXNotificationRecord *record);
 static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body, NSString *bulletinID);
-static void WXSceneBidMapPut(NSString *pid, NSString *bid);
 
 static void WXPumpWeChatMsgSpool(void) {
     @try {
@@ -207,10 +206,6 @@ static void WXPumpWeChatMsgSpool(void) {
             record.joinedText = [parts componentsJoinedByString:@"\n"];
             record.messageText = record.body;
             // v0.7 保活精准化：微信自报场景 pid → 建反挂起映射
-            NSString *scenePid = [d[@"scenepid"] isKindOfClass:[NSString class]] ? d[@"scenepid"] : nil;
-            if (WXKeepAliveEnabledFlag && scenePid.length) {
-                WXSceneBidMapPut(scenePid, @"com.tencent.xin");
-            }
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
             // v2.9.0 保活横幅：保活开启时微信不发本地通知，由 SB 侧代发原生公告
             if (WXKeepAliveEnabledFlag) {
@@ -955,46 +950,6 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
             fn(server, sel, b, mask);
         });
     } @catch (NSException *e) { }
-}
-
-static NSMutableDictionary *WXSceneBidMap = nil;
-static dispatch_queue_t WXSceneBidMapQueue = nil;
-
-static void WXSceneBidMapInit(void) {
-    if (!WXSceneBidMap) {
-        WXSceneBidMap = [NSMutableDictionary new];
-        WXSceneBidMapQueue = dispatch_queue_create("com.777qwq.wxrelay.scenemap", DISPATCH_QUEUE_SERIAL);
-    }
-}
-
-static void WXSceneBidMapPut(NSString *pid, NSString *bid) {
-    if (pid.length == 0 || bid.length == 0) return;
-    WXSceneBidMapInit();
-    dispatch_async(WXSceneBidMapQueue, ^{ WXSceneBidMap[pid] = bid; });
-}
-
-static NSString *WXWeChatContainerPath(void);
-static NSString *WXBidForPersistenceID(NSString *pid) {
-    WXSceneBidMapInit();
-    __block NSString *bid = nil;
-    dispatch_sync(WXSceneBidMapQueue, ^{ bid = WXSceneBidMap[pid]; });
-    if (bid) return bid;
-    // v0.8 兜底：读微信自报的场景 ID 文件（5 秒节流，防反挂起高频读盘）
-    static NSDate *lastRead = nil;
-    static NSString *cachedPID = nil;
-    @try {
-        if (!lastRead || -[lastRead timeIntervalSinceNow] > 5.0) {
-            NSString *container = WXWeChatContainerPath();
-            if (container) {
-                NSString *p = [container stringByAppendingPathComponent:@"tmp/wxrelay_scenepid"];
-                cachedPID = [NSString stringWithContentsOfFile:p encoding:NSUTF8StringEncoding error:nil];
-                if (cachedPID.length == 0) cachedPID = nil;
-                lastRead = [NSDate date];
-            }
-        }
-        if (cachedPID.length && [pid isEqualToString:cachedPID]) return @"com.tencent.xin";
-    } @catch (NSException *e) { }
-    return nil;
 }
 
 %group WXKeepAliveHooks
