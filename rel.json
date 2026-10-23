@@ -1,10 +1,10 @@
 [
   {
-    "url": "https://api.github.com/repos/777qwq/WXRelay/releases/421772841",
-    "assets_url": "https://api.github.com/repos/777qwq/WXRelay/releases/421772841/assets",
-    "upload_url": "https://uploads.github.com/repos/777qwq/WXRelay/releases/421772841/assets{?name,label}",
-    "html_url": "https://github.com/777qwq/WXRelay/releases/tag/0.10",
-    "id": 421772841,
+    "url": "https://api.github.com/repos/777qwq/WXRelay/releases/421905230",
+    "assets_url": "https://api.github.com/repos/777qwq/WXRelay/releases/421905230/assets",
+    "upload_url": "https://uploads.github.com/repos/777qwq/WXRelay/releases/421905230/assets{?name,label}",
+    "html_url": "https://github.com/777qwq/WXRelay/releases/tag/0.11",
+    "id": 421905230,
     "author": {
       "login": "github-actions[bot]",
       "id": 41898282,
@@ -26,22 +26,22 @@
       "user_view_type": "public",
       "site_admin": false
     },
-    "node_id": "RE_kwDOVQbFis4ZI74p",
-    "tag_name": "0.10",
+    "node_id": "RE_kwDOVQbFis4ZJcNO",
+    "tag_name": "0.11",
     "target_commitish": "main",
-    "name": "0.10",
+    "name": "0.11",
     "draft": false,
     "immutable": false,
     "prerelease": false,
-    "created_at": "2026-10-23T13:46:57Z",
-    "updated_at": "2026-10-23T13:47:01Z",
-    "published_at": "2026-10-23T11:39:52Z",
+    "created_at": "2026-10-23T13:53:24Z",
+    "updated_at": "2026-10-23T13:56:03Z",
+    "published_at": "2026-10-23T13:56:01Z",
     "assets": [
       {
-        "url": "https://api.github.com/repos/777qwq/WXRelay/releases/assets/668942663",
-        "id": 668942663,
-        "node_id": "RA_kwDOVQbFis4n30FH",
-        "name": "WXRelay_0.10_rootful_arm.deb",
+        "url": "https://api.github.com/repos/777qwq/WXRelay/releases/assets/669287657",
+        "id": 669287657,
+        "node_id": "RA_kwDOVQbFis4n5ITp",
+        "name": "WXRelay_0.11_rootful_arm.deb",
         "label": "",
         "uploader": {
           "login": "github-actions[bot]",
@@ -66,18 +66,18 @@
         },
         "content_type": "application/x-debian-package",
         "state": "uploaded",
-        "size": 200272,
-        "digest": "sha256:b60d3fcc97cde73234737bf0f4613dd61b211e630a1c2925277ffbcb08735d3f",
+        "size": 199792,
+        "digest": "sha256:a4a54389e1c6f73c9290dd93d422ff80db439246cc62c31a974f162a4d8047d0",
         "download_count": 0,
-        "created_at": "2026-10-23T11:39:53Z",
-        "updated_at": "2026-10-23T11:39:53Z",
-        "browser_download_url": "https://github.com/777qwq/WXRelay/releases/download/0.10/WXRelay_0.10_rootful_arm.deb"
+        "created_at": "2026-10-23T13:56:02Z",
+        "updated_at": "2026-10-23T13:56:03Z",
+        "browser_download_url": "https://github.com/777qwq/WXRelay/releases/download/0.11/WXRelay_0.11_rootful_arm.deb"
       },
       {
-        "url": "https://api.github.com/repos/777qwq/WXRelay/releases/assets/668942664",
-        "id": 668942664,
-        "node_id": "RA_kwDOVQbFis4n30FI",
-        "name": "WXRelay_0.10_roothide_arm64e.deb",
+        "url": "https://api.github.com/repos/777qwq/WXRelay/releases/assets/669287653",
+        "id": 669287653,
+        "node_id": "RA_kwDOVQbFis4n5ITl",
+        "name": "WXRelay_0.11_roothide_arm64e.deb",
         "label": "",
         "uploader": {
           "login": "github-actions[bot]",
@@ -102,18 +102,18 @@
         },
         "content_type": "application/x-debian-package",
         "state": "uploaded",
-        "size": 197308,
-        "digest": "sha256:c67469f2f8abdda1f4f2cd0a24d73dcf68252348901b598702b5c932ab9ada70",
+        "size": 197068,
+        "digest": "sha256:e966b01693bdf1e488ad715271ca1992968aae639a3f8f482bd0e73bc2d2e324",
         "download_count": 0,
-        "created_at": "2026-10-23T11:39:53Z",
-        "updated_at": "2026-10-23T11:39:53Z",
-        "browser_download_url": "https://github.com/777qwq/WXRelay/releases/download/0.10/WXRelay_0.10_roothide_arm64e.deb"
+        "created_at": "2026-10-23T13:56:02Z",
+        "updated_at": "2026-10-23T13:56:03Z",
+        "browser_download_url": "https://github.com/777qwq/WXRelay/releases/download/0.11/WXRelay_0.11_roothide_arm64e.deb"
       },
       {
-        "url": "https://api.github.com/repos/777qwq/WXRelay/releases/assets/668942665",
-        "id": 668942665,
-        "node_id": "RA_kwDOVQbFis4n30FJ",
-        "name": "WXRelay_0.10_rootless_arm64.deb",
+        "url": "https://api.github.com/repos/777qwq/WXRelay/releases/assets/669287655",
+        "id": 669287655,
+        "node_id": "RA_kwDOVQbFis4n5ITn",
+        "name": "WXRelay_0.11_rootless_arm64.deb",
         "label": "",
         "uploader": {
           "login": "github-actions[bot]",
@@ -138,17 +138,17 @@
         },
         "content_type": "application/x-debian-package",
         "state": "uploaded",
-        "size": 200400,
-        "digest": "sha256:14ef4cf9c7a0b57f0f9b6cbdc5616ab523d5f3860c81bcfc252412a4ebfce9b9",
+        "size": 199348,
+        "digest": "sha256:930f5f5efe5eb15ac358efdc2aefeb2c691007ec03847ba4bb867cdd4ed44f03",
         "download_count": 0,
-        "created_at": "2026-10-23T11:39:53Z",
-        "updated_at": "2026-10-23T11:39:53Z",
-        "browser_download_url": "https://github.com/777qwq/WXRelay/releases/download/0.10/WXRelay_0.10_rootless_arm64.deb"
+        "created_at": "2026-10-23T13:56:02Z",
+        "updated_at": "2026-10-23T13:56:03Z",
+        "browser_download_url": "https://github.com/777qwq/WXRelay/releases/download/0.11/WXRelay_0.11_rootless_arm64.deb"
       }
     ],
-    "tarball_url": "https://api.github.com/repos/777qwq/WXRelay/tarball/0.10",
-    "zipball_url": "https://api.github.com/repos/777qwq/WXRelay/zipball/0.10",
-    "body": "# 0.10\n\n## 文档与其他\n- v0.10: 剥离 ka 调试日志与无用 import，功能定版\n\n## 完整提交列表\n- 比较范围：`0.9...0.10`\n- 对比链接：https://github.com/777qwq/WXRelay/compare/0.9...0.10\n"
+    "tarball_url": "https://api.github.com/repos/777qwq/WXRelay/tarball/0.11",
+    "zipball_url": "https://api.github.com/repos/777qwq/WXRelay/zipball/0.11",
+    "body": "# 0.11\n\n## 文档与其他\n- v0.11\n- v0.10 fix: 清理双腿设计下已无用的场景映射代码\n- v0.10: 保活双腿还原（全局反挂起+FBScene 微信阻断，Immortalizer 原版组合）+ 横幅 msgid 去重\n- v0.10: 剥离 ka 调试日志与无用 import，功能定版\n\n## 完整提交列表\n- 比较范围：`0.9...0.11`\n- 对比链接：https://github.com/777qwq/WXRelay/compare/0.9...0.11\n"
   },
   {
     "url": "https://api.github.com/repos/777qwq/WXRelay/releases/421760392",

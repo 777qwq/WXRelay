@@ -861,7 +861,7 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 }
 
 - (void)publishBulletinRequest:(id)request destinations:(unsigned long long)destinations {
-    // v2.9.0 保活横幅：捕获 BBServer 实例与真实目的地掩码（首次真实流量）
+    // v2.9.0 保活横幅：捕获 BBServer 实例与真实目的地掩码
     if (!WXCurrentBBServer) WXCurrentBBServer = self;
     if (destinations != 0) WXLastBulletinDestinations = destinations;
     WXNotificationRecord *record = [WXNotificationRecord recordFromNotificationRequest:request];
@@ -870,6 +870,8 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 }
 
 - (void)_publishBulletinRequest:(id)request forSectionID:(id)sectionIdentifier forDestinations:(unsigned long long)destinations {
+    if (!WXCurrentBBServer) WXCurrentBBServer = self;
+    if (destinations != 0) WXLastBulletinDestinations = destinations;
         %orig;
 }
 
@@ -878,6 +880,8 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 }
 
 - (void)publishBulletin:(id)bulletin destinations:(unsigned long long)destinations {
+    if (!WXCurrentBBServer) WXCurrentBBServer = self;
+    if (destinations != 0) WXLastBulletinDestinations = destinations;
     WXNotificationRecord *record = [WXNotificationRecord recordFromBulletin:bulletin];
     WXForwardMatchedRecordToWeChat(record);
     %orig;
@@ -916,7 +920,9 @@ static void WXPerformSyncOrInlineOnBBServerQueue(dispatch_block_t block) {
 // ===== v2.9.0 保活横幅发布器（BBBulletin 路线，探针 0.8/0.9 已真机验证）=====
 static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body, NSString *bulletinID) {
     @try {
-        if (!WXCurrentBBServer || WXLastBulletinDestinations == 0) return;
+        if (!WXCurrentBBServer) return;
+        // v0.12：掩码兜底 0x1ce（探针实测：banner+锁屏+通知中心全目的地），无真实流量也能发
+        unsigned long long mask = WXLastBulletinDestinations ?: 0x1ceULL;
         Class bulletinCls = objc_getClass("BBBulletin");
         Class actionCls = objc_getClass("BBAction");
         if (!bulletinCls || !actionCls) return;
@@ -941,7 +947,6 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
         id action = [actionCls performSelector:@selector(actionWithLaunchBundleID:callblock:)
                                     withObject:@"com.tencent.xin" withObject:nil];
         if (action) setKVC(b, @"defaultAction", action);
-        unsigned long long mask = WXLastBulletinDestinations;
         id server = WXCurrentBBServer;
         dispatch_async(WXBBServerQueue(), ^{
             SEL sel = @selector(publishBulletinRequest:destinations:);
