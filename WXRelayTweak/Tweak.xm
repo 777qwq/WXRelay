@@ -207,6 +207,12 @@ static void WXPumpWeChatMsgSpool(void) {
             if (record.body.length) [parts addObject:record.body];
             record.joinedText = [parts componentsJoinedByString:@"\n"];
             record.messageText = record.body;
+            // v0.7 保活精准化：微信自报场景 pid → 建反挂起映射
+            NSString *scenePid = [d[@"scenepid"] isKindOfClass:[NSString class]] ? d[@"scenepid"] : nil;
+            if (WXKeepAliveEnabledFlag && scenePid.length) {
+                WXSceneBidMapPut(scenePid, @"com.tencent.xin");
+                WXKALog(@"map(wechat-self): %@ -> com.tencent.xin", scenePid);
+            }
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
             // v2.9.0 保活横幅：保活开启时微信不发本地通知，由 SB 侧代发原生公告
             if (WXKeepAliveEnabledFlag) {
@@ -992,23 +998,6 @@ static NSString *WXBidForPersistenceID(NSString *pid) {
 
 %group WXKeepAliveHooks
 
-// v0.6 映射器：场景设置变更时记录 persistenceIdentifier ↔ bundleIdentifier
-%hook FBScene
-- (void)updateSettings:(id)arg1 withTransitionContext:(id)arg2 completion:(id)arg3 {
-    @try {
-        NSString *pid = [(id)self valueForKey:@"persistenceIdentifier"];
-        if (pid.length == 0) pid = [arg1 valueForKey:@"persistenceIdentifier"];
-        id proc = [(id)self performSelector:@selector(clientProcess)];
-        NSString *bid = [proc valueForKey:@"bundleIdentifier"];
-        if (pid.length && bid.length) {
-            WXSceneBidMapPut(pid, bid);
-            if (WXKeepAliveEnabledFlag) WXKALog(@"map: %@ -> %@", pid, bid);
-        }
-    } @catch (NSException *e) { }
-    %orig;
-}
-%end
-
 %hook UIMutableApplicationSceneSettings
 - (void)setDeactivationReasons:(unsigned long long)arg1 {
     if (WXKeepAliveEnabledFlag && arg1 != 0) {
@@ -1165,7 +1154,7 @@ static NSString *WXBidForPersistenceID(NSString *pid) {
         if (objc_getClass("BBServer")) {
             %init(WXBulletinHooks);
         }
-        if (objc_getClass("FBScene") && objc_getClass("UIMutableApplicationSceneSettings") && objc_getClass("SBFluidSwitcherItemContainer")) {
+        if (objc_getClass("UIMutableApplicationSceneSettings") && objc_getClass("SBFluidSwitcherItemContainer")) {
             %init(WXKeepAliveHooks);
         }
         if (objc_getClass("BBObserver")) {

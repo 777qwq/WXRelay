@@ -1,28 +1,28 @@
 {
-  "total_count": 10,
+  "total_count": 11,
   "workflow_runs": [
     {
-      "id": 39937453064,
+      "id": 39938526412,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTHUsCA",
-      "head_branch": "0.5",
-      "head_sha": "9d33a47f75218668bca3c34a15a67b6f1c2dcb15",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTIWMzA",
+      "head_branch": "0.6",
+      "head_sha": "ea876cb3754a2896704aa266f7e9e38f0b6ef099",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.5 fix: KeepAliveEnabled 补归一化条目（保存被 normalization 打回默认的真凶），撤销误加的重复读写方法",
-      "run_number": 187,
+      "display_title": "v0.6: 场景映射表（FBScene updateSettings 记录 pid↔bid，反挂起查表精准拦微信），移除失效的 FBSce…",
+      "run_number": 188,
       "event": "push",
-      "status": "queued",
+      "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108245946202,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZM_YPWg",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39937453064",
+      "check_suite_id": 108248929163,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNCOTiw",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39938526412",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T10:12:34Z",
-      "updated_at": "2026-10-23T10:12:34Z",
+      "created_at": "2026-10-23T10:21:34Z",
+      "updated_at": "2026-10-23T10:21:37Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T10:12:34Z",
+      "run_started_at": "2026-10-23T10:21:34Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108245946202",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39937453064/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108248929163",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39938526412/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "9d33a47f75218668bca3c34a15a67b6f1c2dcb15",
-        "tree_id": "7c72a490204f26f0c50d5ee4d3f1bda0a70388ff",
-        "message": "v0.5 fix: KeepAliveEnabled 补归一化条目（保存被 normalization 打回默认的真凶），撤销误加的重复读写方法",
-        "timestamp": "2026-10-23T10:12:29Z",
+        "id": "ea876cb3754a2896704aa266f7e9e38f0b6ef099",
+        "tree_id": "92eaa086c2cc53261a647bbfcbad69480bbcfafb",
+        "message": "v0.6: 场景映射表（FBScene updateSettings 记录 pid↔bid，反挂起查表精准拦微信），移除失效的 FBSceneManager 直查",
+        "timestamp": "2026-10-23T10:21:28Z",
         "author": {
           "name": "mos",
           "email": "mos@local"

@@ -278,6 +278,20 @@ static BOOL WRTextWasRecentlySent(NSString *text) {
 
 // v2.8.5 发送中旗标：B hook 见旗标直接跳过（重入/回声釜底抽薪）
 
+// v0.7 保活精准化：微信自报家门（自己场景的 persistenceIdentifier，与 SB 反挂起对象同源）
+static NSString *WRWeChatScenePID(void) {
+    @try {
+        NSSet *scenes = [[UIApplication sharedApplication] connectedScenes];
+        for (UIScene *scene in scenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                NSString *pid = scene.session.persistenceIdentifier;
+                if (pid.length) return pid;
+            }
+        }
+    } @catch (NSException *e) { }
+    return nil;
+}
+
 static void WRSpoolMsgRecord(NSDictionary *record) {
     @try {
         NSString *dir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_msgs"];
@@ -335,6 +349,7 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         if (msgID.length == 0) msgID = [NSString stringWithFormat:@"%u-%lu", (unsigned int)msgType, (unsigned long)[content hash]];
         WRSpoolMsgRecord(@{
             @"bid": @"com.tencent.xin",
+            @"scenepid": WRWeChatScenePID(),
             @"title": title,
             @"subtitle": subtitle,
             @"body": content,
