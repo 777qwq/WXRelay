@@ -284,7 +284,7 @@ static NSString *WRWeChatScenePID(void) {
         NSSet *scenes = [[UIApplication sharedApplication] connectedScenes];
         for (UIScene *scene in scenes) {
             if ([scene isKindOfClass:[UIWindowScene class]]) {
-                NSString *pid = scene.session.persistenceIdentifier;
+                NSString *pid = scene.session.persistentIdentifier;
                 if (pid.length) return pid;
             }
         }

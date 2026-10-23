@@ -1,28 +1,28 @@
 {
-  "total_count": 12,
+  "total_count": 13,
   "workflow_runs": [
     {
-      "id": 39939663935,
+      "id": 39940132889,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTJboPw",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTJ4QGQ",
       "head_branch": "0.7",
-      "head_sha": "c6bb0247c8301e5a7a4909e1bbc52ea4b2b2c2c6",
+      "head_sha": "69aff0f8aa6295031f2c7dc749bc3d3805ca5e32",
       "path": ".github/workflows/release.yml",
-      "display_title": "v0.7: 保活身份改微信自报（UIWindowScene.session.persistenceIdentifier 随消息上送建映射）…",
-      "run_number": 189,
+      "display_title": "fix: fwd decl for scene map helpers",
+      "run_number": 190,
       "event": "push",
       "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108252015987,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNFKtcw",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39939663935",
+      "check_suite_id": 108253288485,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNGYYJQ",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39940132889",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T10:31:03Z",
-      "updated_at": "2026-10-23T10:31:06Z",
+      "created_at": "2026-10-23T10:35:01Z",
+      "updated_at": "2026-10-23T10:35:05Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T10:31:03Z",
+      "run_started_at": "2026-10-23T10:35:01Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108252015987",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39939663935/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108253288485",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940132889/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "c6bb0247c8301e5a7a4909e1bbc52ea4b2b2c2c6",
-        "tree_id": "5749113a84ddd00f10dd62ca2e73204721719c65",
-        "message": "v0.7: 保活身份改微信自报（UIWindowScene.session.persistenceIdentifier 随消息上送建映射），删除静默的 FBScene 映射器",
-        "timestamp": "2026-10-23T10:30:58Z",
+        "id": "69aff0f8aa6295031f2c7dc749bc3d3805ca5e32",
+        "tree_id": "13700875cf0bbff237505ac87577ff943967b5e9",
+        "message": "fix: fwd decl for scene map helpers",
+        "timestamp": "2026-10-23T10:34:56Z",
         "author": {
           "name": "mos",
           "email": "mos@local"
