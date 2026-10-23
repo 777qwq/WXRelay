@@ -1,28 +1,28 @@
 {
-  "total_count": 16,
+  "total_count": 17,
   "workflow_runs": [
     {
-      "id": 39943026124,
+      "id": 39945656381,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTMo1zA",
-      "head_branch": "0.8",
-      "head_sha": "e49cc031c2efd27021bae047a5b15416d70aa00c",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTPJYPQ",
+      "head_branch": "0.9",
+      "head_sha": "ce5077a765f7243a87b8b1024306933e1e7a1f06",
       "path": ".github/workflows/release.yml",
-      "display_title": "fix: scene pid report function order",
-      "run_number": 193,
+      "display_title": "v0.9: 修场景文件重读节流条件（比较符写反导致缓存空值永不刷新——微信 pid 已实证对上，此行修复后兜底生效）",
+      "run_number": 194,
       "event": "push",
       "status": "in_progress",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108261319803,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNOCkew",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39943026124",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39943026124",
+      "check_suite_id": 108268588298,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNU-NCg",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39945656381",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T11:00:17Z",
-      "updated_at": "2026-10-23T11:00:21Z",
+      "created_at": "2026-10-23T11:22:47Z",
+      "updated_at": "2026-10-23T11:22:50Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T11:00:17Z",
+      "run_started_at": "2026-10-23T11:22:47Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39943026124/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39943026124/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108261319803",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39943026124/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39943026124/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39943026124/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108268588298",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39945656381/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "e49cc031c2efd27021bae047a5b15416d70aa00c",
-        "tree_id": "20623091d659e189c95e2d35de563e197f7ac653",
-        "message": "fix: scene pid report function order",
-        "timestamp": "2026-10-23T11:00:11Z",
+        "id": "ce5077a765f7243a87b8b1024306933e1e7a1f06",
+        "tree_id": "cad15f717ba8a3ca2553d90b2fc7ea2cbb7288f7",
+        "message": "v0.9: 修场景文件重读节流条件（比较符写反导致缓存空值永不刷新——微信 pid 已实证对上，此行修复后兜底生效）",
+        "timestamp": "2026-10-23T11:22:42Z",
         "author": {
           "name": "mos",
           "email": "mos@local"

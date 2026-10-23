@@ -1,5 +1,3 @@
-#import <fcntl.h>
-#import <unistd.h>
 #import <Foundation/Foundation.h>
 #import <dlfcn.h>
 #import <string.h>
@@ -175,7 +173,6 @@ static BOOL WXWeChatMsgSourceAlive(void) {
 static void WXForwardMatchedRecordToWeChat(WXNotificationRecord *record);
 static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSString *body);
 static void WXSceneBidMapPut(NSString *pid, NSString *bid);
-static void WXKALog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1,2);
 
 static void WXPumpWeChatMsgSpool(void) {
     @try {
@@ -213,7 +210,6 @@ static void WXPumpWeChatMsgSpool(void) {
             NSString *scenePid = [d[@"scenepid"] isKindOfClass:[NSString class]] ? d[@"scenepid"] : nil;
             if (WXKeepAliveEnabledFlag && scenePid.length) {
                 WXSceneBidMapPut(scenePid, @"com.tencent.xin");
-                WXKALog(@"map(wechat-self): %@ -> com.tencent.xin", scenePid);
             }
             record.bulletinID = [d[@"msgid"] isKindOfClass:[NSString class]] ? d[@"msgid"] : nil;
             // v2.9.0 保活横幅：保活开启时微信不发本地通知，由 SB 侧代发原生公告
@@ -960,19 +956,6 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
     } @catch (NSException *e) { }
 }
 
-// v0.5 反挂起精准化：persistenceIdentifier → FBSceneManager 场景工作区反查 bundle
-static NSString *WXPersistenceLogPath = @"/var/mobile/Library/Logs/wxrelay_ka.log";
-static void WXKALog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1,2);
-static void WXKALog(NSString *fmt, ...) {
-    va_list args; va_start(args, fmt);
-    NSString *line = [[NSString alloc] initWithFormat:fmt arguments:args];
-    va_end(args);
-    NSString *ts = [NSDateFormatter localizedStringFromDate:[NSDate date] dateStyle:NSDateFormatterNoStyle timeStyle:NSDateFormatterMediumStyle];
-    NSData *d = [[NSString stringWithFormat:@"[%@] %@\n", ts, line] dataUsingEncoding:NSUTF8StringEncoding];
-    int fd = open([WXPersistenceLogPath fileSystemRepresentation], O_WRONLY | O_APPEND | O_CREAT, 0644);
-    if (fd >= 0) { write(fd, d.bytes, d.length); close(fd); }
-}
-
 static NSMutableDictionary *WXSceneBidMap = nil;
 static dispatch_queue_t WXSceneBidMapQueue = nil;
 
@@ -1021,7 +1004,6 @@ static NSString *WXBidForPersistenceID(NSString *pid) {
         NSString *pid = nil;
         @try { pid = [(id)self valueForKey:@"persistenceIdentifier"]; } @catch (NSException *e) { }
         NSString *bid = pid ? WXBidForPersistenceID(pid) : nil;
-        if (WXKeepAliveEnabledFlag) WXKALog(@"deact reasons=%llu pid=%@ bid=%@", arg1, pid, bid);
         if ([bid isEqualToString:@"com.tencent.xin"]) return; // 微信场景：吞掉失活
     }
     %orig;
