@@ -1,28 +1,28 @@
 {
-  "total_count": 14,
+  "total_count": 15,
   "workflow_runs": [
     {
-      "id": 39940736750,
+      "id": 39942468435,
       "name": "Release",
-      "node_id": "WFR_kwLOVQbFis8AAAAJTKdG7g",
-      "head_branch": "0.7",
-      "head_sha": "9de728c8e54baf8cc993ac9f5eddfbeaaf56bc0d",
+      "node_id": "WFR_kwLOVQbFis8AAAAJTMGzUw",
+      "head_branch": "0.8",
+      "head_sha": "c5845bcd319b81d5d85d0aa3784a97d50597e4fb",
       "path": ".github/workflows/release.yml",
-      "display_title": "fix: UISceneSession.persistentIdentifier",
-      "run_number": 191,
+      "display_title": "v0.8: 保活免消息生效——微信主动定期上报场景 ID 文件（ctor 3s+回前台+每消息），SB 反挂起查表未命中兜底读文件（5s 节流）",
+      "run_number": 192,
       "event": "push",
-      "status": "in_progress",
+      "status": "queued",
       "conclusion": null,
       "workflow_id": 390145444,
-      "check_suite_id": 108254961059,
-      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNH-dow",
-      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750",
-      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39940736750",
+      "check_suite_id": 108259728012,
+      "check_suite_node_id": "CS_kwDOVQbFis8AAAAZNMhajA",
+      "url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39942468435",
+      "html_url": "https://github.com/777qwq/WXRelay/actions/runs/39942468435",
       "pull_requests": [
 
       ],
-      "created_at": "2026-10-23T10:40:15Z",
-      "updated_at": "2026-10-23T10:40:24Z",
+      "created_at": "2026-10-23T10:55:17Z",
+      "updated_at": "2026-10-23T10:55:17Z",
       "actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -48,7 +48,7 @@
       "referenced_workflows": [
 
       ],
-      "run_started_at": "2026-10-23T10:40:15Z",
+      "run_started_at": "2026-10-23T10:55:17Z",
       "triggering_actor": {
         "login": "777qwq",
         "id": 202795824,
@@ -70,19 +70,19 @@
         "user_view_type": "public",
         "site_admin": false
       },
-      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/jobs",
-      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/logs",
-      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108254961059",
-      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/artifacts",
-      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/cancel",
-      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39940736750/rerun",
+      "jobs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39942468435/jobs",
+      "logs_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39942468435/logs",
+      "check_suite_url": "https://api.github.com/repos/777qwq/WXRelay/check-suites/108259728012",
+      "artifacts_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39942468435/artifacts",
+      "cancel_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39942468435/cancel",
+      "rerun_url": "https://api.github.com/repos/777qwq/WXRelay/actions/runs/39942468435/rerun",
       "previous_attempt_url": null,
       "workflow_url": "https://api.github.com/repos/777qwq/WXRelay/actions/workflows/390145444",
       "head_commit": {
-        "id": "9de728c8e54baf8cc993ac9f5eddfbeaaf56bc0d",
-        "tree_id": "80d34c2d92fedec82f37ee5a53a9a33689e1d8fa",
-        "message": "fix: UISceneSession.persistentIdentifier",
-        "timestamp": "2026-10-23T10:40:10Z",
+        "id": "c5845bcd319b81d5d85d0aa3784a97d50597e4fb",
+        "tree_id": "c7528afd625bf5d88802fc59a7d6e516c2fa5978",
+        "message": "v0.8: 保活免消息生效——微信主动定期上报场景 ID 文件（ctor 3s+回前台+每消息），SB 反挂起查表未命中兜底读文件（5s 节流）",
+        "timestamp": "2026-10-23T10:55:12Z",
         "author": {
           "name": "mos",
           "email": "mos@local"

@@ -278,16 +278,6 @@ static BOOL WRTextWasRecentlySent(NSString *text) {
 
 // v2.8.5 发送中旗标：B hook 见旗标直接跳过（重入/回声釜底抽薪）
 
-// v0.8 保活精准化：微信主动定期上报场景 ID 到文件（不等消息，开了保活就生效）
-static void WRReportScenePIDToFile(void) {
-    @try {
-        NSString *pid = WRWeChatScenePID();
-        if (pid.length == 0) return;
-        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_scenepid"];
-        [pid writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    } @catch (NSException *e) { }
-}
-
 // v0.7 保活精准化：微信自报家门（自己场景的 persistenceIdentifier，与 SB 反挂起对象同源）
 static NSString *WRWeChatScenePID(void) {
     @try {
@@ -301,6 +291,17 @@ static NSString *WRWeChatScenePID(void) {
     } @catch (NSException *e) { }
     return nil;
 }
+
+// v0.8 保活精准化：微信主动定期上报场景 ID 到文件（不等消息，开了保活就生效）
+static void WRReportScenePIDToFile(void) {
+    @try {
+        NSString *pid = WRWeChatScenePID();
+        if (pid.length == 0) return;
+        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_scenepid"];
+        [pid writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch (NSException *e) { }
+}
+
 
 static void WRSpoolMsgRecord(NSDictionary *record) {
     WRReportScenePIDToFile();
