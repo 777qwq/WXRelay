@@ -1139,6 +1139,86 @@ static void WXDumpSave(void) {
     } @catch (NSException *e) { }
 }
 
+// ===== v0.23 探针：8 候选 API 广撒网，每秒快照滚动落盘，真值无处可藏 =====
+static NSString *WXXLastLaunchedBid = nil;
+static BOOL WXXUILocked = YES; // 默认按锁屏处理（安全方向：多弹不吞）
+
+static NSString *WXProbeBidOf(id obj) {
+    @try {
+        if (!obj || obj == (id)kCFNull) return @"(nil)";
+        if ([obj isKindOfClass:[NSString class]]) return obj;
+        id b = nil;
+        if ([obj respondsToSelector:@selector(bundleIdentifier)])
+            b = [obj valueForKey:@"bundleIdentifier"];
+        if (![b isKindOfClass:[NSString class]] && [obj respondsToSelector:@selector(application)]) {
+            id a = [obj valueForKey:@"application"];
+            if ([a respondsToSelector:@selector(bundleIdentifier)]) b = [a valueForKey:@"bundleIdentifier"];
+        }
+        if ([b isKindOfClass:[NSString class]]) return b;
+        return [NSString stringWithFormat:@"<%@>", NSStringFromClass([obj class])];
+    } @catch (NSException *e) { return @"<exc>"; }
+}
+
+static NSString *WXProbeCall(NSString *clsName, NSString *selName) {
+    @try {
+        Class c = objc_getClass(clsName.UTF8String);
+        if (!c) return @"<noclass>";
+        SEL sh = NSSelectorFromString(@"sharedInstance");
+        if (![(id)c respondsToSelector:sh]) return @"<noshared>";
+        id inst = ((id(*)(id,SEL))objc_msgSend)(c, sh);
+        if (!inst) return @"<noinst>";
+        SEL s = NSSelectorFromString(selName);
+        if (![inst respondsToSelector:s]) return @"<nosel>";
+        id r = ((id(*)(id,SEL))objc_msgSend)(inst, s);
+        return WXProbeBidOf(r);
+    } @catch (NSException *e) { return [NSString stringWithFormat:@"<EXC %@>", e.name]; }
+}
+
+static NSString *WXProbeKVC(NSString *clsName, NSString *key) {
+    @try {
+        Class c = objc_getClass(clsName.UTF8String);
+        if (!c) return @"<noclass>";
+        SEL sh = NSSelectorFromString(@"sharedInstance");
+        if (![(id)c respondsToSelector:sh]) return @"<noshared>";
+        id inst = ((id(*)(id,SEL))objc_msgSend)(c, sh);
+        if (!inst) return @"<noinst>";
+        id r = [inst valueForKey:key];
+        return WXProbeBidOf(r);
+    } @catch (NSException *e) { return [NSString stringWithFormat:@"<EXC %@>", e.name]; }
+}
+
+static void WXProbeAppend(NSString *line) {
+    @try {
+        if (!WXFrontmostDump) WXFrontmostDump = [NSMutableString new];
+        [WXFrontmostDump appendString:line];
+        if (WXFrontmostDump.length > 14000) {
+            [WXFrontmostDump deleteCharactersInRange:NSMakeRange(0, 7000)];
+            NSUInteger nl = [WXFrontmostDump rangeOfString:@"\n"].location;
+            if (nl != NSNotFound && nl > 0) [WXFrontmostDump deleteCharactersInRange:NSMakeRange(0, nl + 1)];
+        }
+    } @catch (NSException *e) { }
+}
+
+static void WXProbeSnapCycle(void) {
+    @try {
+        static NSDateFormatter *df = nil;
+        if (!df) { df = [NSDateFormatter new]; df.dateFormat = @"HH:mm:ss"; }
+        WXProbeAppend([NSString stringWithFormat:@"%@ fp=%@ msl=%@ iris=%@ alm=%@ kvMSL=%@ kv_MSL=%@ kvAL=%@ ll=%@ lk=%d\n",
+            [df stringFromDate:[NSDate date]],
+            WXProbeCall(@"SBApplicationController", @"frontmostApplication"),
+            WXProbeCall(@"SBMainWorkspace", @"mainScreenAppLayout"),
+            WXProbeCall(@"SBMainWorkspace", @"frontmostApplicationIris"),
+            WXProbeCall(@"SBAppLayoutManager", @"mainScreenAppLayout"),
+            WXProbeKVC(@"SBMainWorkspace", @"mainScreenAppLayout"),
+            WXProbeKVC(@"SBMainWorkspace", @"_mainScreenAppLayout"),
+            WXProbeKVC(@"SBAppLayoutManager", @"appLayout"),
+            WXXLastLaunchedBid ?: @"-", WXXUILocked ? 1 : 0]);
+        WXDumpSave();
+    } @catch (NSException *e) { }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{ WXProbeSnapCycle(); });
+}
+
 // 0.18：候选 getter 每轮轮询时依次尝试，命中即缓存；全程写 dump 文件
 static NSInteger WXFrontmostStrategy = -1; // 0=SBAppController.frontmostApplication 1=WS.mainScreenAppLayout.app 2=WS.frontmostApplicationIris 3=WS.appLayout
 
@@ -1238,8 +1318,6 @@ static void WXFrontmostProbe(void) {
     WXDumpSave();
 }
 
-static NSString *WXXLastLaunchedBid = nil;
-static BOOL WXXUILocked = YES; // 默认按锁屏处理（安全方向：多弹不吞）
 
 static void WXFrontmostPollCycle(void) {
     @try {
@@ -1279,6 +1357,7 @@ static void WXFrontmostPollCycle(void) {
         if ([b isKindOfClass:[NSString class]] && [(NSString *)b length] > 0) {
             if (![b isEqualToString:WXXLastLaunchedBid]) {
                 WXXLastLaunchedBid = [b copy];
+                WXProbeAppend([NSString stringWithFormat:@"EVT setPid %@\n", WXXLastLaunchedBid]);
                 NSLog(@"wxrelay frontmost(launch) -> %@", WXXLastLaunchedBid);
             }
         }
@@ -1359,6 +1438,11 @@ static void WXFrontmostPollCycle(void) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20.0 * NSEC_PER_SEC)),
                        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             WXDumpSave(); // 收集轮询期数据后再落盘一次
+        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10.0 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            WXProbeAppend(@"=== 0.23 probe start ===\n");
+            WXProbeSnapCycle(); // v0.23 探针：每秒快照
         });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)),
                        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
