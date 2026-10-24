@@ -282,7 +282,8 @@ static void WRTaskNotifyCallback(CFNotificationCenterRef __unused c, void __unus
 // （applicationState 被 Immortalizer 伪造成 Active，不可信——0.15 实测门禁全灭）
 static BOOL WRUserLookingAtWeChat(void) {
     @try {
-        NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost"];
+        NSString *fpath = [[NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_frontmost"] copy];
+        NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:fpath];
         NSString *fm = p[@"frontmost"];
         if (![fm isKindOfClass:[NSString class]]) return NO; // SB 侧 dormant：宁可多发不吞
         NSString *ts = p[@"ts"];

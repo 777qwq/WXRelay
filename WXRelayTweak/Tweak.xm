@@ -61,16 +61,19 @@ static NSArray<NSDictionary *> *WXWeChatTargetList(void) {
 }
 
 static NSString *WXWeChatContainerPath(void) {
-    NSString *appsDir = @"/var/mobile/Containers/Data/Application";
-    NSArray *dirs = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:appsDir error:nil];
-    for (NSString *d in dirs) {
-        NSString *meta = [appsDir stringByAppendingPathComponent:
-            [NSString stringWithFormat:@"%@/.com.apple.mobile_container_manager.metadata.plist", d]];
-        NSDictionary *md = [NSDictionary dictionaryWithContentsOfFile:meta];
-        if ([[md objectForKey:@"MCMMetadataIdentifier"] isEqualToString:@"com.tencent.xin"]) {
-            return [appsDir stringByAppendingPathComponent:d];
+    @try {
+        NSString *appsDir = @"/var/mobile/Containers/Data/Application";
+        NSArray *dirs = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:appsDir error:nil];
+        for (NSString *d in dirs) {
+            NSString *meta = [appsDir stringByAppendingPathComponent:
+                [NSString stringWithFormat:@"%@/.com.apple.mobile_container_manager.metadata.plist", d]];
+            NSDictionary *pDict = [NSDictionary dictionaryWithContentsOfFile:meta];
+            NSString *infoId = pDict[@"MCMMetadataIdentifier"];
+            if ([infoId isKindOfClass:[NSString class]] && [infoId isEqualToString:@"com.tencent.xin"]) {
+                return [appsDir stringByAppendingPathComponent:d];
+            }
         }
-    }
+    } @catch (NSException *e) { }
     return nil;
 }
 
@@ -1116,6 +1119,10 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
 // Immortalizer 伪造成 Active，不可信）。轮询前台 app，变化时写共享文件，
 // 微信侧模块C据此决定"透传微信自带提示 / 强制原生横幅"。=====
 static NSString *WXFrontmostFilePath(void) {
+    @try {
+        NSString *wc = WXWeChatContainerPath();
+        if (wc) return [wc stringByAppendingPathComponent:@"tmp/wxrelay_frontmost"];
+    } @catch (NSException *e) { }
     return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost";
 }
 
@@ -1217,7 +1224,22 @@ static void WXFrontmostProbe(void) {
         [WXFrontmostDump appendString:@"\n"];
         free(names);
     }
-    if (WXFrontmostStrategy < 0) [WXFrontmostDump appendString:@"NO STRATEGY — dormant\n"];
+    for (NSString *clsName in @[@"SBAppLayout", @"SBFocusedAppLayoutSwitcherModifier"]) {
+        Class cc = objc_getClass(clsName);
+        if (!cc) { [WXFrontmostDump appendFormat:@"%@: nil\n", clsName]; continue; }
+        unsigned int mn = 0; Method *mms = class_copyMethodList(cc, &mn);
+        [WXFrontmostDump appendFormat:@"%@ (%u): ", clsName, mn];
+        for (unsigned int i = 0; i < mn; i++) [WXFrontmostDump appendFormat:@"%@ ", NSStringFromSelector(method_getName(mms[i]))];
+        [WXFrontmostDump appendString:@"\n"];
+        if (mms) free(mms);
+    }
+    Class lsm0 = objc_getClass("SBLockScreenManager");
+    if (lsm0) {
+        id li0 = ((id(*)(id,SEL))objc_msgSend)(lsm0, @selector(sharedInstance));
+        [WXFrontmostDump appendFormat:@"SBLockScreenManager isUILocked: %d\n",
+            li0 && [li0 respondsToSelector:@selector(isUILocked)] ? 1 : 0];
+    }
+    if (WXFrontmostStrategy < 0) [WXFrontmostDump appendString:@"NO STRATEGY — using launch-tracking v0.20\n"];
     WXDumpSave();
 }
 
@@ -1228,6 +1250,17 @@ static void WXFrontmostPollCycle(void) {
         if (app && [app respondsToSelector:@selector(bundleIdentifier)]) {
             id b = [app valueForKey:@"bundleIdentifier"];
             if ([b isKindOfClass:[NSString class]]) bid = b;
+        }
+        // v0.20 事件追踪叠加：锁屏=空；未锁=最近启动的 app
+        if (WXXLastLaunchedBid.length && bid.length == 0) {
+            BOOL locked = NO;
+            Class lsm = objc_getClass("SBLockScreenManager");
+            if (lsm) {
+                id li = ((id(*)(id,SEL))objc_msgSend)(lsm, @selector(sharedInstance));
+                if (li && [li respondsToSelector:@selector(isUILocked)])
+                    locked = ((BOOL(*)(id,SEL))objc_msgSend)(li, @selector(isUILocked));
+            }
+            if (!locked) bid = WXXLastLaunchedBid;
         }
         static NSString *last = nil;
         if (![bid isEqualToString:last]) {
@@ -1243,6 +1276,27 @@ static void WXFrontmostPollCycle(void) {
         WXFrontmostPollCycle();
     });
 }
+
+
+// ===== v0.20 前台事件追踪：app 启动即前台候选 =====
+static NSString *WXXLastLaunchedBid = nil;
+
+%group WXFrontmostTrackHooks
+%hook SBApplication
+- (void)setPid:(int)pid {
+    %orig;
+    @try {
+        id b = [self valueForKey:@"bundleIdentifier"];
+        if ([b isKindOfClass:[NSString class]] && [(NSString *)b length] > 0) {
+            if (![b isEqualToString:WXXLastLaunchedBid]) {
+                WXXLastLaunchedBid = [b copy];
+                NSLog(@"wxrelay frontmost(launch) -> %@", WXXLastLaunchedBid);
+            }
+        }
+    } @catch (NSException *e) { }
+}
+%end
+%end
 
 %ctor {
     @autoreleasepool {
@@ -1282,6 +1336,9 @@ static void WXFrontmostPollCycle(void) {
 
         if (objc_getClass("BBServer")) {
             %init(WXBulletinHooks);
+        }
+        if (objc_getClass("SBApplication")) {
+            %init(WXFrontmostTrackHooks);
         }
 
         WXFrontmostProbe();
