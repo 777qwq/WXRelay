@@ -1233,17 +1233,13 @@ static void WXFrontmostProbe(void) {
         [WXFrontmostDump appendString:@"\n"];
         if (mms) free(mms);
     }
-    Class lsm0 = objc_getClass("SBLockScreenManager");
-    if (lsm0) {
-        id li0 = ((id(*)(id,SEL))objc_msgSend)(lsm0, @selector(sharedInstance));
-        [WXFrontmostDump appendFormat:@"SBLockScreenManager isUILocked: %d\n",
-            li0 && [li0 respondsToSelector:@selector(isUILocked)] ? 1 : 0];
-    }
+    // v0.21: 锁屏状态改为 setter 被动观察（禁止主动创建 SBLockScreenManager 实例）
     if (WXFrontmostStrategy < 0) [WXFrontmostDump appendString:@"NO STRATEGY — using launch-tracking v0.20\n"];
     WXDumpSave();
 }
 
 static NSString *WXXLastLaunchedBid = nil;
+static BOOL WXXUILocked = YES; // 默认按锁屏处理（安全方向：多弹不吞）
 
 static void WXFrontmostPollCycle(void) {
     @try {
@@ -1255,14 +1251,7 @@ static void WXFrontmostPollCycle(void) {
         }
         // v0.20 事件追踪叠加：锁屏=空；未锁=最近启动的 app
         if (WXXLastLaunchedBid.length && bid.length == 0) {
-            BOOL locked = NO;
-            Class lsm = objc_getClass("SBLockScreenManager");
-            if (lsm) {
-                id li = ((id(*)(id,SEL))objc_msgSend)(lsm, @selector(sharedInstance));
-                if (li && [li respondsToSelector:@selector(isUILocked)])
-                    locked = ((BOOL(*)(id,SEL))objc_msgSend)(li, @selector(isUILocked));
-            }
-            if (!locked) bid = WXXLastLaunchedBid;
+            if (!WXXUILocked) bid = WXXLastLaunchedBid;
         }
         static NSString *last = nil;
         if (![bid isEqualToString:last]) {
@@ -1341,7 +1330,32 @@ static void WXFrontmostPollCycle(void) {
             %init(WXFrontmostTrackHooks);
         }
 
-        WXFrontmostProbe();
+        @try { WXFrontmostProbe(); } @catch (NSException *e) { NSLog(@"wxrelay probe EXC %@", e.name); }
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8.0 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            // v0.21: 主线程延迟挂锁屏 setter 观察，绝不主动实例化 SBLockScreenManager
+            @try {
+                Class lc = objc_getClass("SBLockScreenManager");
+                if (!lc) { NSLog(@"wxrelay: no SBLockScreenManager"); return; }
+                for (NSString *nm in @[@"setUILocked:", @"setIsUILocked:", @"setLockState:"]) {
+                    SEL s = NSSelectorFromString(nm);
+                    Method m = class_getInstanceMethod(lc, s);
+                    if (!m) continue;
+                    IMP origL = method_getImplementation(m);
+                    __block IMP origKeep = origL;
+                    __block SEL selKeep = s;
+                    IMP blk = imp_implementationWithBlock(^(id self2, BOOL v) {
+                        WXXUILocked = v;
+                        ((void(*)(id,SEL,BOOL))origKeep)(self2, selKeep, v);
+                    });
+                    method_setImplementation(m, blk);
+                    NSLog(@"wxrelay: lock observed via %@", nm);
+                    break;
+                }
+            } @catch (NSException *e) {
+                NSLog(@"wxrelay lock hook EXC %@", e.name);
+            }
+        });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20.0 * NSEC_PER_SEC)),
                        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             WXDumpSave(); // 收集轮询期数据后再落盘一次
