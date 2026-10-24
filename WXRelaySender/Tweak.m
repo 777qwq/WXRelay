@@ -41,6 +41,7 @@ static void wrLog(NSString *msg) {
 //   强制 banner+list+sound（原生路径，零伪造）。真前台判定由 SB 侧
 //   （WXRelayTweak）写共享文件，本模块只读。
 static BOOL WRBannerFixDone = NO;
+static Class WRLastDelegateClass = nil;
 
 static NSString *WRPrefsPath(void) {
     return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.plist";
@@ -58,12 +59,18 @@ static BOOL WRBannerEnabled(void) {
 static BOOL WRUserLookingAtWeChat(void);
 
 static void WRAddWillPresent(void) {
-    if (WRBannerFixDone) return;
+    id center = ((id(*)(id,SEL))objc_msgSend)(objc_getClass("UNUserNotificationCenter"), @selector(currentNotificationCenter));
+    if (!center) return;
+    id dlg = ((id(*)(id,SEL))objc_msgSend)(center, @selector(delegate));
+    Class cur = dlg ? object_getClass(dlg) : nil;
+    if (WRBannerFixDone && cur == WRLastDelegateClass) return; // 同一个 delegate，已处理
+    if (WRBannerFixDone && cur != WRLastDelegateClass)
+        wrLog([NSString stringWithFormat:@"bannerfix: delegate changed %@ -> %@ — re-arm",
+              NSStringFromClass(WRLastDelegateClass), NSStringFromClass(cur)]);
+    WRBannerFixDone = NO;
+    WRLastDelegateClass = cur;
     if (!WRBannerEnabled()) return;
     @try {
-        id center = ((id(*)(id,SEL))objc_msgSend)(objc_getClass("UNUserNotificationCenter"), @selector(currentNotificationCenter));
-        if (!center) return;
-        id dlg = ((id(*)(id,SEL))objc_msgSend)(center, @selector(delegate));
         if (!dlg) return;
         Class cls = object_getClass(dlg);
         SEL sel = NSSelectorFromString(@"userNotificationCenter:willPresentNotification:withCompletionHandler:");
@@ -313,7 +320,34 @@ static NSData *WRAvatarData(NSString *wxid) {
     return nil;
 }
 
+static dispatch_queue_t WRBannerQueue(void) {
+    static dispatch_queue_t q;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ q = dispatch_queue_create("com.777qwq.wxrelay.banner", DISPATCH_QUEUE_SERIAL); });
+    return q;
+}
+
+static NSTimeInterval WRLastBannerPost = 0;
+
+// v0.19：整条投递链（含头像下载）全部在串行后台队列执行，钩子线程零阻塞；
+// 限流 0.8s 防洪峰（usernoted 过载疑似会杀微信）。
+static void WRPostBannerInner(NSString *title, NSString *body, NSString *threadId);
+
 static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
+    NSString *t = [title copy]; NSString *b = [body copy]; NSString *tid = [threadId copy];
+    dispatch_async(WRBannerQueue(), ^{
+        @try {
+            NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+            if (now - WRLastBannerPost < 0.8) { wrLog(@"banner: rate-limited, drop"); return; }
+            WRLastBannerPost = now;
+            WRPostBannerInner(t, b, tid);
+        } @catch (NSException *e) {
+            wrLog([NSString stringWithFormat:@"banner q EXC %@", e.name]);
+        }
+    });
+}
+
+static void WRPostBannerInner(NSString *title, NSString *body, NSString *threadId) {
     @try {
         BOOL looking = WRUserLookingAtWeChat();
         NSDictionary *fp = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost"];
@@ -336,7 +370,8 @@ static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
         if (threadId.length) {
             NSData *av = WRAvatarData(threadId);
             if (av.length) {
-                NSString *avFile = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxav_banner.png"];
+                NSString *avFile = [NSTemporaryDirectory() stringByAppendingPathComponent:
+                    [NSString stringWithFormat:@"wxav_%@.png", [[NSUUID UUID] UUIDString]]];
                 [av writeToFile:avFile atomically:YES];
                 Class attCls = objc_getClass("UNNotificationAttachment");
                 if (attCls) {

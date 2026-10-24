@@ -1191,7 +1191,7 @@ static void WXFrontmostProbe(void) {
         [WXFrontmostDump appendFormat:@"SBMainWorkspace: %u methods, hits: ", n];
         for (unsigned int i = 0; i < n; i++) {
             NSString *nm = NSStringFromSelector(method_getName(ms[i]));
-            if ([nm.lowercaseString containsString:@"frontmost"] || [nm.lowercaseString containsString:@"appLayout"] || [nm.lowercaseString containsString:@"mainScreen"])
+            if ([nm.lowercaseString containsString:@"frontmost"] || [nm.lowercaseString containsString:@"applayout"] || [nm.lowercaseString containsString:@"mainscreen"] || [nm.lowercaseString containsString:@"applLayout".lowercaseString])
                 [WXFrontmostDump appendFormat:@"%@ ", nm];
         }
         [WXFrontmostDump appendString:@"\n"];
@@ -1204,6 +1204,19 @@ static void WXFrontmostProbe(void) {
         }
     } else [WXFrontmostDump appendString:@"SBMainWorkspace: nil\n"];
 
+    // 相关类名全列（AppLayout/FrontMost/MainScreen 家族）
+    unsigned int cn = 0;
+    const char **names = objc_copyClassNamesForImage("/System/Library/PrivateFrameworks/SpringBoard.framework/SpringBoard", &cn);
+    if (names) {
+        [WXFrontmostDump appendString:@"classes: "];
+        for (unsigned int i = 0; i < cn; i++) {
+            NSString *cn2 = [NSString stringWithUTF8String:names[i]];
+            if ([cn2 containsString:@"AppLayout"] || [cn2 containsString:@"FrontMost"] || [cn2 containsString:@"Frontmost"] || [cn2 hasPrefix:@"SBMainScreen"])
+                [WXFrontmostDump appendFormat:@"%@ ", cn2];
+        }
+        [WXFrontmostDump appendString:@"\n"];
+        free(names);
+    }
     if (WXFrontmostStrategy < 0) [WXFrontmostDump appendString:@"NO STRATEGY — dormant\n"];
     WXDumpSave();
 }
