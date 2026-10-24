@@ -126,6 +126,7 @@ static void WRAddWillPresent(void) {
 }
 
 static void WRNoteSentText(NSString *text);
+static NSString *WRStr(id v);
 static volatile BOOL WRInSend = NO;
 
 // v2.3.2 路A：备注/昵称 → wxid，**仅精准匹配**（不做包含/前缀）；解析失败返回 nil，绝不裸发
@@ -339,11 +340,11 @@ static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
                 [av writeToFile:avFile atomically:YES];
                 Class attCls = objc_getClass("UNNotificationAttachment");
                 if (attCls) {
-                    NSError *aerr = nil;
-                    id att = ((id(*)(id,SEL,id,id,id,id))objc_msgSend)(attCls, @selector(attachmentWithIdentifier:URL:options:error:),
-                        @"avatar", [NSURL fileURLWithPath:avFile], nil, (void *)&aerr);
+                    NSError *__autoreleasing aerr = nil;
+                    id att = ((id(*)(id,SEL,id,id,id,id*))objc_msgSend)(attCls, @selector(attachmentWithIdentifier:URL:options:error:),
+                        @"avatar", [NSURL fileURLWithPath:avFile], nil, &aerr);
                     if (att) {
-                        [content setAttachments:((id(*)(id,SEL,id))objc_msgSend)([NSArray arrayWithObject:att], @selector(copy))];
+                        [content setAttachments:[NSArray arrayWithObject:att]];
                         wrLog(@"banner: avatar attached");
                     } else wrLog([NSString stringWithFormat:@"banner: attach ERR %@", aerr.localizedDescription ?: @""]);
                 }
