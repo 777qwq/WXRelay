@@ -95,6 +95,18 @@ static void WRAddWillPresent(void) {
                 return;
             }
             void (^wrapped)(NSUInteger) = ^(NSUInteger opts) {
+                static NSMutableDictionary *recent = nil;
+                static dispatch_once_t onceT;
+                dispatch_once(&onceT, ^{ recent = [NSMutableDictionary dictionary]; });
+                NSString *key = [NSString stringWithFormat:@"%@|%@", n.request.content.title ?: @"", n.request.content.body ?: @""];
+                NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+                NSTimeInterval lastT = [recent[key] doubleValue];
+                if (now - lastT < 3.0) {
+                    wrLog([NSString stringWithFormat:@"bannerfix: dedupe hit (%@) — passthrough", n.request.content.title]);
+                    handler(opts);
+                    return;
+                }
+                recent[key] = @(now);
                 NSUInteger forced = opts | UNNotificationPresentationOptionBanner
                                         | UNNotificationPresentationOptionList
                                         | UNNotificationPresentationOptionSound;
@@ -273,9 +285,40 @@ static BOOL WRUserLookingAtWeChat(void) {
     } @catch (NSException *e) { return NO; }
 }
 
+static NSString *WRAvatarCacheFile(NSString *wxid) {
+    return [NSTemporaryDirectory() stringByAppendingPathComponent:
+        [NSString stringWithFormat:@"wxavatar_%@.dat", [wxid valueForKey:@"hash"]]];
+}
+
+// 头像：本地缓存优先，否则拉 CContact 头像 URL（2 秒预算，失败退纯文本横幅）
+static NSData *WRAvatarData(NSString *wxid) {
+    @try {
+        if (wxid.length == 0) return nil;
+        NSString *cache = WRAvatarCacheFile(wxid);
+        NSData *cached = [NSData dataWithContentsOfFile:cache];
+        if (cached.length > 100) return cached;
+        id mgr = ((id(*)(id,SEL))objc_msgSend)(objc_getClass("MMServiceCenter"), @selector(defaultCenter));
+        Class CContactMgr = objc_getClass("CContactMgr");
+        if (!mgr || !CContactMgr) return nil;
+        id cm = ((id(*)(id,SEL,id))objc_msgSend)(mgr, @selector(getService:), CContactMgr);
+        if (!cm) return nil;
+        id contact = ((id(*)(id,SEL,id))objc_msgSend)(cm, @selector(getContactByName:), wxid);
+        if (!contact || ![contact respondsToSelector:@selector(m_nsHeadImgUrl)]) return nil;
+        NSString *url = WRStr([contact valueForKey:@"m_nsHeadImgUrl"]);
+        if (url.length == 0 || ![url hasPrefix:@"http"]) return nil;
+        NSData *d = [NSData dataWithContentsOfURL:[NSURL URLWithString:url]];
+        if (d.length > 100) { [d writeToFile:cache atomically:YES]; return d; }
+    } @catch (NSException *e) { }
+    return nil;
+}
+
 static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
     @try {
-        if (WRUserLookingAtWeChat()) { wrLog(@"banner: user in WeChat — skip"); return; }
+        BOOL looking = WRUserLookingAtWeChat();
+        NSDictionary *fp = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost"];
+        wrLog([NSString stringWithFormat:@"banner: decide frontmost=%@ looking=%d ('%@')",
+              fp[@"frontmost"] ?: @"(nofile)", looking, title ?: @""]);
+        if (looking) { wrLog(@"banner: user in WeChat — skip"); return; }
         Class UNC = objc_getClass("UNUserNotificationCenter");
         if (!UNC) { wrLog(@"banner: no UNUserNotificationCenter"); return; }
         id center = ((id(*)(id,SEL))objc_msgSend)(UNC, @selector(currentNotificationCenter));
@@ -288,6 +331,26 @@ static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
         [content setSound:((id(*)(id,SEL))objc_msgSend)(objc_getClass("UNNotificationSound"), @selector(defaultSound))];
         if (threadId.length) [content setThreadIdentifier:threadId];
         [content setUserInfo:@{@"wxrelay": @YES}];
+        // v0.17 头像附件（banner 右侧缩略图）+ 角标
+        if (threadId.length) {
+            NSData *av = WRAvatarData(threadId);
+            if (av.length) {
+                NSString *avFile = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxav_banner.png"];
+                [av writeToFile:avFile atomically:YES];
+                Class attCls = objc_getClass("UNNotificationAttachment");
+                if (attCls) {
+                    NSError *aerr = nil;
+                    id att = ((id(*)(id,SEL,id,id,id,id))objc_msgSend)(attCls, @selector(attachmentWithIdentifier:URL:options:error:),
+                        @"avatar", [NSURL fileURLWithPath:avFile], nil, (void *)&aerr);
+                    if (att) {
+                        [content setAttachments:((id(*)(id,SEL,id))objc_msgSend)([NSArray arrayWithObject:att], @selector(copy))];
+                        wrLog(@"banner: avatar attached");
+                    } else wrLog([NSString stringWithFormat:@"banner: attach ERR %@", aerr.localizedDescription ?: @""]);
+                }
+            }
+        }
+        NSUInteger cur = (NSUInteger)((long(*)(id,SEL))objc_msgSend)([UIApplication sharedApplication], @selector(applicationIconBadgeNumber));
+        [content setBadge:@(cur + 1)];
         Class trigCls = objc_getClass("UNTimeIntervalNotificationTrigger");
         id trigger = ((id(*)(id,SEL,double,BOOL))objc_msgSend)(trigCls, @selector(triggerWithTimeInterval:repeats:), 0.05, NO);
         Class reqCls = objc_getClass("UNNotificationRequest");
