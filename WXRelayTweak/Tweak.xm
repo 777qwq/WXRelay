@@ -1125,11 +1125,6 @@ static SEL WXFrontmostGetterSel = nil;
 
 static NSMutableString *WXFrontmostDump = nil;
 
-static void WXDumpAppend(NSString *line) {
-    if (!WXFrontmostDump) WXFrontmostDump = [NSMutableString new];
-    [WXFrontmostDump appendFormat:@"%@\n", line];
-}
-
 static void WXDumpSave(void) {
     @try {
         [WXFrontmostDump writeToFile:@"/var/mobile/Library/Preferences/wxrelay_sb_dump.txt"
