@@ -1111,6 +1111,83 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
 
 %end
 
+
+// ===== v0.16 真前台判定：SB 是唯一权威（微信进程的 applicationState 被
+// Immortalizer 伪造成 Active，不可信）。轮询前台 app，变化时写共享文件，
+// 微信侧模块C据此决定"透传微信自带提示 / 强制原生横幅"。=====
+static NSString *WXFrontmostFilePath(void) {
+    return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost";
+}
+
+static IMP WXFrontmostGetterImp = nil;
+static id WXFrontmostGetterTarget = nil;
+static SEL WXFrontmostGetterSel = nil;
+
+static void WXFrontmostProbe(void) {
+    // 候选1：SBApplicationController - frontmostApplication（历代稳）
+    Class c1 = objc_getClass("SBApplicationController");
+    if (c1) {
+        SEL s = NSSelectorFromString(@"frontmostApplication");
+        if ([c1 instancesRespondToSelector:s]) {
+            id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
+            if (inst) { WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s)); WXFrontmostGetterSel = s;
+                WXLog(@"frontmost: SBApplicationController/frontmostApplication"); return; }
+        }
+        // 候选1b：任何 frontmost* 方法
+        unsigned int n = 0; Method *ms = class_copyMethodList(c1, &n);
+        for (unsigned int i = 0; i < n; i++) {
+            NSString *nm = NSStringFromSelector(method_getName(ms[i]));
+            if ([nm hasPrefix:@"frontmost"]) {
+                SEL s2 = NSSelectorFromString(nm);
+                id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
+                if (inst && [inst respondsToSelector:s2]) {
+                    WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s2)); WXFrontmostGetterSel = s2;
+                    WXLog([NSString stringWithFormat:@"frontmost: SBApplicationController/%@", nm]); free(ms); return;
+                }
+            }
+        }
+        if (ms) free(ms);
+    }
+    // 候选2：SBMainWorkspace frontmostApplication / frontmostApplicationIris
+    Class c2 = objc_getClass("SBMainWorkspace");
+    if (c2) {
+        for (NSString *nm in @[@"frontmostApplication", @"frontmostApplicationIris"]) {
+            SEL s = NSSelectorFromString(nm);
+            if ([c2 instancesRespondToSelector:s]) {
+                id inst = ((id(*)(id,SEL))objc_msgSend)(c2, @selector(sharedInstance));
+                if (inst) { WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s)); WXFrontmostGetterSel = s;
+                    WXLog([NSString stringWithFormat:@"frontmost: SBMainWorkspace/%@", nm]); return; }
+            }
+        }
+    }
+    WXLog(@"frontmost: no getter found — writer dormant (weChat side will banner everywhere)");
+}
+
+static void WXFrontmostPollCycle(void) {
+    @try {
+        NSString *bid = @"";
+        if (WXFrontmostGetterTarget && WXFrontmostGetterImp) {
+            id app = ((id(*)(id,SEL))WXFrontmostGetterImp)(WXFrontmostGetterTarget, WXFrontmostGetterSel);
+            if ([app isKindOfClass:objc_getClass("SBApplication")] || [app respondsToSelector:@selector(bundleIdentifier)]) {
+                id b = [app valueForKey:@"bundleIdentifier"];
+                if ([b isKindOfClass:[NSString class]]) bid = b;
+            }
+        }
+        static NSString *last = nil;
+        if (![bid isEqualToString:last]) {
+            last = [bid copy];
+            NSDictionary *d = @{@"frontmost": bid,
+                                @"ts": [NSString stringWithFormat:@"%.0f", [[NSDate date] timeIntervalSince1970]]};
+            [d writeToFile:WXFrontmostFilePath() atomically:YES];
+            WXLog([NSString stringWithFormat:@"frontmost -> '%@'", bid]);
+        }
+    } @catch (NSException *e) { WXLog([NSString stringWithFormat:@"frontmost EXC %@", e.name]); }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
+                   dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        WXFrontmostPollCycle();
+    });
+}
+
 %ctor {
     @autoreleasepool {
         WXPreferencesQueue = dispatch_queue_create("com.777qwq.wxrelay.preferences", DISPATCH_QUEUE_SERIAL);
@@ -1150,6 +1227,12 @@ static void WXPublishKeepAliveBulletin(NSString *title, NSString *subtitle, NSSt
         if (objc_getClass("BBServer")) {
             %init(WXBulletinHooks);
         }
+
+        WXFrontmostProbe();
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)),
+                       dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            WXFrontmostPollCycle();
+        });
         if (objc_getClass("UIMutableApplicationSceneSettings") && objc_getClass("SBFluidSwitcherItemContainer")) {
             %init(WXKeepAliveHooks);
         }

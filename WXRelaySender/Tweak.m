@@ -268,17 +268,45 @@ static void WRTaskNotifyCallback(CFNotificationCenterRef __unused c, void __unus
 // ===== v2.8.0 模块B：消息源（AsyncOnAddMsg 全覆盖）=====
 // 管线：微信收消息 → 组 record JSON → 落 wxrelay_msgs + darwin 呼 SB → SB 匹配 → 现有任务通道回微信
 // v0.3 banner: post local notification when in background (UILocalNotification)
-static void WRPostBanner(NSString *title, NSString *body) {
+// v0.16：UN 请求通道（原生头像/点击直达），前台判定读 SB 写的共享文件
+// （applicationState 被 Immortalizer 伪造成 Active，不可信——0.15 实测门禁全灭）
+static BOOL WRUserLookingAtWeChat(void) {
     @try {
-        if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive) return;
-        UILocalNotification *ln = [[UILocalNotification alloc] init];
-        ln.fireDate = [NSDate date];
-        ln.timeZone = [NSTimeZone defaultTimeZone];
-        if (title.length) ln.alertTitle = title;
-        if (body.length) ln.alertBody = body;
-        ln.hasAction = YES;
-        [[UIApplication sharedApplication] scheduleLocalNotification:ln];
-        [ln release];
+        NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost"];
+        NSString *fm = p[@"frontmost"];
+        if (![fm isKindOfClass:[NSString class]]) return NO; // SB 侧 dormant：宁可多发不吞
+        NSString *ts = p[@"ts"];
+        double t = ts ? [ts doubleValue] : 0;
+        BOOL fresh = ([[NSDate date] timeIntervalSince1970] - t) < 120; // SB 轮询活着
+        BOOL inWeChat = [fm isEqualToString:@"com.tencent.xin"];
+        return (inWeChat && fresh);
+    } @catch (NSException *e) { return NO; }
+}
+
+static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
+    @try {
+        if (WRUserLookingAtWeChat()) { wrLog(@"banner: user in WeChat — skip"); return; }
+        Class UNC = objc_getClass("UNUserNotificationCenter");
+        if (!UNC) { wrLog(@"banner: no UNUserNotificationCenter"); return; }
+        id center = ((id(*)(id,SEL))objc_msgSend)(UNC, @selector(currentNotificationCenter));
+        if (!center) return;
+        Class contentCls = objc_getClass("UNMutableNotificationContent");
+        if (!contentCls) return;
+        id content = [[contentCls alloc] init];
+        if (title.length) [content setTitle:title];
+        if (body.length) [content setBody:body];
+        [content setSound:((id(*)(id,SEL))objc_msgSend)(objc_getClass("UNNotificationSound"), @selector(defaultSound))];
+        if (threadId.length) [content setThreadIdentifier:threadId];
+        [content setUserInfo:@{@"wxrelay": @YES}];
+        Class trigCls = objc_getClass("UNTimeIntervalNotificationTrigger");
+        id trigger = ((id(*)(id,SEL,double,BOOL))objc_msgSend)(trigCls, @selector(triggerWithTimeInterval:repeats:), 0.05, NO);
+        Class reqCls = objc_getClass("UNNotificationRequest");
+        id req = ((id(*)(id,SEL,id,id,id))objc_msgSend)(reqCls, @selector(requestWithIdentifier:content:trigger:),
+            [NSString stringWithFormat:@"wxr-%.0f", [[NSDate date] timeIntervalSince1970] * 100], content, trigger);
+        [content release];
+        ((void(*)(id,SEL,id,id,id))objc_msgSend)(center, @selector(addNotificationRequest:withCompletionHandler:), req,
+            ^(NSError *err){ if (err) wrLog([NSString stringWithFormat:@"banner add ERR: %@", err.localizedDescription]); });
+        wrLog([NSString stringWithFormat:@"banner: UN posted '%@'", title ?: @""]);
     } @catch (NSException *e) {
         wrLog([NSString stringWithFormat:@"banner EXC %@", e.name]);
     }
@@ -448,7 +476,8 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         {
             NSString *bt = title;
             if (isGroup && subtitle.length) bt = [NSString stringWithFormat:@"%@ - %@", bt, subtitle];
-            WRPostBanner(bt, content);
+            NSString *threadId = WRStr([wrap valueForKey:@"m_nsFromUsr"]) ?: @"";
+            WRPostBanner(bt, content, threadId);
         }
         NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
         if (msgID.length == 0) msgID = [NSString stringWithFormat:@"%u-%lu", (unsigned int)msgType, (unsigned long)[content hash]];
