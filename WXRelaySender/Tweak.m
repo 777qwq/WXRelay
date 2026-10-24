@@ -152,23 +152,32 @@ static void WRAddWillPresent(void) {
         if (!dlg) return;
         Class cls = object_getClass(dlg);
         SEL sel = NSSelectorFromString(@"userNotificationCenter:willPresentNotification:withCompletionHandler:");
-        if (class_getInstanceMethod(cls, sel)) {
-            wrLog(@"bannerfix: delegate implements willPresent — skip");
+        Method m = class_getInstanceMethod(cls, sel);
+        if (!m) {
+            wrLog(@"bannerfix: no willPresent on delegate — unexpected, skip");
             WRBannerFixDone = YES;
             return;
         }
-        struct objc_method_description d =
-            protocol_getMethodDescription(@protocol(UNUserNotificationCenterDelegate), sel, NO, YES);
+        // delegate 实现了 willPresent 但返回缺 banner -> 拦截并强制 OR 入 banner+list+sound
+        IMP orig = method_getImplementation(m);
         IMP blk = imp_implementationWithBlock(^(id self, id center2, UNNotification *n,
                                                 void (^handler)(NSUInteger)) {
-            wrLog([NSString stringWithFormat:@"bannerfix: willPresent -> banner+list+sound (%@)",
-                   n.request.content.title ?: @"(nil)"]);
-            handler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList
-                  | UNNotificationPresentationOptionSound);
+            void (^wrapped)(NSUInteger) = ^(NSUInteger opts) {
+                NSUInteger forced = opts | UNNotificationPresentationOptionBanner
+                                        | UNNotificationPresentationOptionList
+                                        | UNNotificationPresentationOptionSound;
+                wrLog([NSString stringWithFormat:@"bannerfix: willPresent orig=%lu -> forced=%lu (%@)",
+                       (unsigned long)opts, (unsigned long)forced,
+                       n.request.content.title ?: @"(nil)"]);
+                handler(forced);
+            };
+            ((void (*)(id, SEL, id, UNNotification *, void (^)(NSUInteger)))orig)
+                (self, @selector(userNotificationCenter:willPresentNotification:withCompletionHandler:),
+                 center2, n, wrapped);
         });
-        BOOL ok = class_addMethod(cls, sel, blk, d.types ?: "v@:@@@@?");
-        wrLog([NSString stringWithFormat:@"bannerfix: addMethod willPresent on %@ -> %d", NSStringFromClass(cls), ok]);
-        WRBannerFixDone = ok;
+        method_setImplementation(m, blk);
+        wrLog([NSString stringWithFormat:@"bannerfix: willPresent swizzled on %@ (force banner+list+sound)", NSStringFromClass(cls)]);
+        WRBannerFixDone = YES;
     } @catch (NSException *e) {
         wrLog([NSString stringWithFormat:@"bannerfix EXC: %@", e.name]);
     }
