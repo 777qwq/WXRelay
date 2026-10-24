@@ -632,6 +632,7 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
             WRReportScenePIDToFile(); // v0.8 保活：场景就绪后立即上报
+            WRInstallTouchHook(); // v0.22 触摸真值
             WRAddWillPresent(); // 模块C：delegate 已注册，就地装载
         });
         // v0.8 保活：每次回前台刷新场景 ID 文件（场景会话可能变化）
