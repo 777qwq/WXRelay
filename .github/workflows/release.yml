@@ -49,6 +49,11 @@ jobs:
           BREW_PREFIX="$(brew --prefix)"
           echo "$BREW_PREFIX/bin" >> "$GITHUB_PATH"
 
+      - name: Ensure /opt/theos writable
+        run: |
+          sudo mkdir -p /opt/theos
+          sudo chown -R $(whoami) /opt/theos
+
       - name: Cache roothide Theos
         uses: actions/cache@v4
         with:
