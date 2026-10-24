@@ -1123,55 +1123,103 @@ static IMP WXFrontmostGetterImp = nil;
 static id WXFrontmostGetterTarget = nil;
 static SEL WXFrontmostGetterSel = nil;
 
+static NSMutableString *WXFrontmostDump = nil;
+
+static void WXDumpAppend(NSString *line) {
+    if (!WXFrontmostDump) WXFrontmostDump = [NSMutableString new];
+    [WXFrontmostDump appendFormat:@"%@\n", line];
+}
+
+static void WXDumpSave(void) {
+    @try {
+        [WXFrontmostDump writeToFile:@"/var/mobile/Library/Preferences/wxrelay_sb_dump.txt"
+                          atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch (NSException *e) { }
+}
+
+// 0.18：候选 getter 每轮轮询时依次尝试，命中即缓存；全程写 dump 文件
+static NSInteger WXFrontmostStrategy = -1; // 0=SBAppController.frontmostApplication 1=WS.mainScreenAppLayout.app 2=WS.frontmostApplicationIris 3=WS.appLayout
+
+static id WXFrontmostApp(void) {
+    @try {
+        if (WXFrontmostStrategy == 0) {
+            return ((id(*)(id,SEL))objc_msgSend)(WXFrontmostGetterTarget, WXFrontmostGetterSel);
+        }
+        if (WXFrontmostStrategy == 1 || WXFrontmostStrategy == 2) {
+            id ws = ((id(*)(id,SEL))objc_msgSend)(objc_getClass("SBMainWorkspace"), @selector(sharedInstance));
+            if (!ws) return nil;
+            id layout = ((id(*)(id,SEL))objc_msgSend)(ws, @selector(mainScreenAppLayout));
+            if (!layout) return nil;
+            if (WXFrontmostStrategy == 1) {
+                id app = [layout valueForKey:@"application"];
+                return app;
+            }
+            return ((id(*)(id,SEL))objc_msgSend)(ws, @selector(frontmostApplicationIris));
+        }
+        return nil;
+    } @catch (NSException *e) {
+        return nil;
+    }
+}
+
 static void WXFrontmostProbe(void) {
-    // 候选1：SBApplicationController - frontmostApplication（历代稳）
+    if (!WXFrontmostDump) WXFrontmostDump = [NSMutableString new];
+    [WXFrontmostDump appendFormat:@"=== wxrelay sb dump %@ ===\n", [NSDate date]];
+
+    // SBApplicationController 全部 frontmost* 实例方法
     Class c1 = objc_getClass("SBApplicationController");
     if (c1) {
-        SEL s = NSSelectorFromString(@"frontmostApplication");
-        if ([c1 instancesRespondToSelector:s]) {
-            id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
-            if (inst) { WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s)); WXFrontmostGetterSel = s;
-                NSLog(@"frontmost: SBApplicationController/frontmostApplication"); return; }
-        }
-        // 候选1b：任何 frontmost* 方法
         unsigned int n = 0; Method *ms = class_copyMethodList(c1, &n);
+        [WXFrontmostDump appendFormat:@"SBApplicationController: %u methods, frontmost*: ", n];
         for (unsigned int i = 0; i < n; i++) {
             NSString *nm = NSStringFromSelector(method_getName(ms[i]));
-            if ([nm hasPrefix:@"frontmost"]) {
-                SEL s2 = NSSelectorFromString(nm);
-                id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
-                if (inst && [inst respondsToSelector:s2]) {
-                    WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s2)); WXFrontmostGetterSel = s2;
-                    NSLog(@"%@", [NSString stringWithFormat:@"frontmost: SBApplicationController/%@", nm]); free(ms); return;
-                }
+            if ([nm.lowercaseString containsString:@"frontmost"]) [WXFrontmostDump appendFormat:@"%@ ", nm];
+        }
+        [WXFrontmostDump appendString:@"\n"];
+        if (ms) free(ms);
+        if ([c1 instancesRespondToSelector:@selector(frontmostApplication)]) {
+            id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
+            if (inst) {
+                WXFrontmostGetterTarget = inst;
+                WXFrontmostGetterSel = @selector(frontmostApplication);
+                WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], @selector(frontmostApplication)));
+                WXFrontmostStrategy = 0;
+                [WXFrontmostDump appendString:@"strategy 0 armed\n"];
             }
         }
-        if (ms) free(ms);
-    }
-    // 候选2：SBMainWorkspace frontmostApplication / frontmostApplicationIris
+    } else [WXFrontmostDump appendString:@"SBApplicationController: nil\n"];
+
+    // SBMainWorkspace 关键方法
     Class c2 = objc_getClass("SBMainWorkspace");
     if (c2) {
-        for (NSString *nm in @[@"frontmostApplication", @"frontmostApplicationIris"]) {
-            SEL s = NSSelectorFromString(nm);
-            if ([c2 instancesRespondToSelector:s]) {
-                id inst = ((id(*)(id,SEL))objc_msgSend)(c2, @selector(sharedInstance));
-                if (inst) { WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s)); WXFrontmostGetterSel = s;
-                    NSLog(@"%@", [NSString stringWithFormat:@"frontmost: SBMainWorkspace/%@", nm]); return; }
-            }
+        unsigned int n = 0; Method *ms = class_copyMethodList(c2, &n);
+        [WXFrontmostDump appendFormat:@"SBMainWorkspace: %u methods, hits: ", n];
+        for (unsigned int i = 0; i < n; i++) {
+            NSString *nm = NSStringFromSelector(method_getName(ms[i]));
+            if ([nm.lowercaseString containsString:@"frontmost"] || [nm.lowercaseString containsString:@"appLayout"] || [nm.lowercaseString containsString:@"mainScreen"])
+                [WXFrontmostDump appendFormat:@"%@ ", nm];
         }
-    }
-    NSLog(@"frontmost: no getter found — writer dormant (weChat side will banner everywhere)");
+        [WXFrontmostDump appendString:@"\n"];
+        if (ms) free(ms);
+        if ([c2 instancesRespondToSelector:@selector(mainScreenAppLayout)]) {
+            if (WXFrontmostStrategy < 0) { WXFrontmostStrategy = 1; [WXFrontmostDump appendString:@"strategy 1 armed\n"]; }
+        }
+        if ([c2 instancesRespondToSelector:@selector(frontmostApplicationIris)]) {
+            if (WXFrontmostStrategy < 0) { WXFrontmostStrategy = 2; [WXFrontmostDump appendString:@"strategy 2 armed\n"]; }
+        }
+    } else [WXFrontmostDump appendString:@"SBMainWorkspace: nil\n"];
+
+    if (WXFrontmostStrategy < 0) [WXFrontmostDump appendString:@"NO STRATEGY — dormant\n"];
+    WXDumpSave();
 }
 
 static void WXFrontmostPollCycle(void) {
     @try {
         NSString *bid = @"";
-        if (WXFrontmostGetterTarget && WXFrontmostGetterImp) {
-            id app = ((id(*)(id,SEL))WXFrontmostGetterImp)(WXFrontmostGetterTarget, WXFrontmostGetterSel);
-            if ([app isKindOfClass:objc_getClass("SBApplication")] || [app respondsToSelector:@selector(bundleIdentifier)]) {
-                id b = [app valueForKey:@"bundleIdentifier"];
-                if ([b isKindOfClass:[NSString class]]) bid = b;
-            }
+        id app = WXFrontmostApp();
+        if (app && [app respondsToSelector:@selector(bundleIdentifier)]) {
+            id b = [app valueForKey:@"bundleIdentifier"];
+            if ([b isKindOfClass:[NSString class]]) bid = b;
         }
         static NSString *last = nil;
         if (![bid isEqualToString:last]) {
@@ -1229,6 +1277,9 @@ static void WXFrontmostPollCycle(void) {
         }
 
         WXFrontmostProbe();
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20.0 * NSEC_PER_SEC)), ^{
+            WXDumpSave(); // 收集轮询期数据后再落盘一次
+        });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)),
                        dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             WXFrontmostPollCycle();
