@@ -63,7 +63,7 @@ jobs:
       - name: Prepare roothide Theos
         run: |
           sudo mkdir -p /opt
-          if [ ! -d /opt/theos ]; then
+          if [ ! -d /opt/theos/.git ]; then
             sudo git clone --depth 1 --recursive https://github.com/roothide/theos.git /opt/theos
           else
             cd /opt/theos
