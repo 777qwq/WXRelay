@@ -9,6 +9,7 @@
  * 日志：微信沙盒 tmp/wxrelay.log
  */
 #import <UIKit/UIKit.h>
+#import <UserNotifications/UserNotifications.h>
 #import <Foundation/Foundation.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
@@ -28,6 +29,98 @@ static void wrLog(NSString *msg) {
         }
         if (fh) { [fh seekToEndOfFile]; [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
     } @catch (NSException *e) { }
+}
+
+
+// ===== 模块C：通知复活（保活态原生横幅，v0.15 并入） =====
+// 实测（WXRelayProbe 3.x + WXRelayNF 2.2.7/2.2.8，iOS 16.3）：
+//   保活使 usernoted 把微信当"活跃 app"→ 通知呈现决策下放到进程内
+//   UNUserNotificationCenter delegate（willPresent），微信返回缺 banner
+//   → 有声音震动、无横幅无角标。修复：swizzle delegate 的 willPresent，
+//   按真实前台状态改答案：微信真前台→透传（走微信自己设置）；非前台→
+//   强制 banner+list+sound（原生路径，零伪造）。真前台判定由 SB 侧
+//   （WXRelayTweak）写共享文件，本模块只读。
+static BOOL WRBannerFixDone = NO;
+
+static NSString *WRFrontmostStatePath(void) {
+    return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost";
+}
+
+static NSString *WRPrefsPath(void) {
+    return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.plist";
+}
+
+static BOOL WRBannerEnabled(void) {
+    @try {
+        NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:WRPrefsPath()];
+        id v = p[@"ShowBanner"];
+        return v ? [v boolValue] : YES; // 默认开
+    } @catch (NSException *e) { return YES; }
+}
+
+// SB 侧写入："1"=用户此刻真的在看微信
+static BOOL WRUserLookingAtWeChat(void) {
+    @try {
+        NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:WRFrontmostStatePath()];
+        id v = p[@"frontmost"];
+        return [v isKindOfClass:[NSString class]] && [(NSString *)v isEqualToString:@"1"];
+    } @catch (NSException *e) { return NO; }
+}
+
+static void WRAddWillPresent(void) {
+    if (WRBannerFixDone) return;
+    if (!WRBannerEnabled()) return;
+    @try {
+        id center = ((id(*)(id,SEL))objc_msgSend)(objc_getClass("UNUserNotificationCenter"), @selector(currentNotificationCenter));
+        if (!center) return;
+        id dlg = ((id(*)(id,SEL))objc_msgSend)(center, @selector(delegate));
+        if (!dlg) return;
+        Class cls = object_getClass(dlg);
+        SEL sel = NSSelectorFromString(@"userNotificationCenter:willPresentNotification:withCompletionHandler:");
+        Method m = class_getInstanceMethod(cls, sel);
+        if (!m) {
+            wrLog(@"bannerfix: delegate lacks willPresent — adding");
+            struct objc_method_description d =
+                protocol_getMethodDescription(@protocol(UNUserNotificationCenterDelegate), sel, NO, YES);
+            IMP blk = imp_implementationWithBlock(^(id self, id c2, UNNotification *n, void (^handler)(NSUInteger)) {
+                wrLog([NSString stringWithFormat:@"bannerfix: willPresent(added) %@ -> banner+list+sound",
+                       n.request.content.title ?: @"(nil)"]);
+                handler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList
+                      | UNNotificationPresentationOptionSound);
+            });
+            BOOL ok = class_addMethod(cls, sel, blk, d.types ?: "v@:@@@@?");
+            wrLog([NSString stringWithFormat:@"bannerfix: addMethod on %@ -> %d", NSStringFromClass(cls), ok]);
+            WRBannerFixDone = ok;
+            return;
+        }
+        // 已实现：拦截，按真实前台状态决定透传或强制横幅
+        IMP orig = method_getImplementation(m);
+        IMP blk = imp_implementationWithBlock(^(id self, id c2, UNNotification *n, void (^handler)(NSUInteger)) {
+            BOOL looking = WRUserLookingAtWeChat();
+            if (looking) {
+                wrLog([NSString stringWithFormat:@"bannerfix: wechat foreground -> pass-through (%@)",
+                       n.request.content.title ?: @"(nil)"]);
+                ((void (*)(id, SEL, id, UNNotification *, void (^)(NSUInteger)))orig)
+                    (self, @selector(userNotificationCenter:willPresentNotification:withCompletionHandler:), c2, n, handler);
+                return;
+            }
+            void (^wrapped)(NSUInteger) = ^(NSUInteger opts) {
+                NSUInteger forced = opts | UNNotificationPresentationOptionBanner
+                                        | UNNotificationPresentationOptionList
+                                        | UNNotificationPresentationOptionSound;
+                wrLog([NSString stringWithFormat:@"bannerfix: background -> orig=%lu forced=%lu (%@)",
+                       (unsigned long)opts, (unsigned long)forced, n.request.content.title ?: @"(nil)"]);
+                handler(forced);
+            };
+            ((void (*)(id, SEL, id, UNNotification *, void (^)(NSUInteger)))orig)
+                (self, @selector(userNotificationCenter:willPresentNotification:withCompletionHandler:), c2, n, wrapped);
+        });
+        method_setImplementation(m, blk);
+        wrLog([NSString stringWithFormat:@"bannerfix: willPresent swizzled on %@ (foreground passthrough / background force)", NSStringFromClass(cls)]);
+        WRBannerFixDone = YES;
+    } @catch (NSException *e) {
+        wrLog([NSString stringWithFormat:@"bannerfix EXC: %@", e.name]);
+    }
 }
 
 static void WRNoteSentText(NSString *text);
@@ -420,6 +513,7 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
             WRReportScenePIDToFile(); // v0.8 保活：场景就绪后立即上报
+            WRAddWillPresent(); // 模块C：delegate 已注册，就地装载
         });
         // v0.8 保活：每次回前台刷新场景 ID 文件（场景会话可能变化）
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
@@ -430,6 +524,7 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,
             CFNotificationSuspensionBehaviorDeliverImmediately);
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            WRAddWillPresent(); // 模块C兜底重试
             WRFlushTasks(); // 启动补发积压
             // v2.5.1：保活/轮询已移除，锁屏存活交给 AppData 真后台（用户拍板）
         });
