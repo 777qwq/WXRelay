@@ -1225,7 +1225,7 @@ static void WXFrontmostProbe(void) {
         free(names);
     }
     for (NSString *clsName in @[@"SBAppLayout", @"SBFocusedAppLayoutSwitcherModifier"]) {
-        Class cc = objc_getClass(clsName);
+        Class cc = objc_getClass(clsName.UTF8String);
         if (!cc) { [WXFrontmostDump appendFormat:@"%@: nil\n", clsName]; continue; }
         unsigned int mn = 0; Method *mms = class_copyMethodList(cc, &mn);
         [WXFrontmostDump appendFormat:@"%@ (%u): ", clsName, mn];
@@ -1242,6 +1242,8 @@ static void WXFrontmostProbe(void) {
     if (WXFrontmostStrategy < 0) [WXFrontmostDump appendString:@"NO STRATEGY — using launch-tracking v0.20\n"];
     WXDumpSave();
 }
+
+static NSString *WXXLastLaunchedBid = nil;
 
 static void WXFrontmostPollCycle(void) {
     @try {
@@ -1279,14 +1281,12 @@ static void WXFrontmostPollCycle(void) {
 
 
 // ===== v0.20 前台事件追踪：app 启动即前台候选 =====
-static NSString *WXXLastLaunchedBid = nil;
-
 %group WXFrontmostTrackHooks
 %hook SBApplication
 - (void)setPid:(int)pid {
     %orig;
     @try {
-        id b = [self valueForKey:@"bundleIdentifier"];
+        id b = [(id)self valueForKey:@"bundleIdentifier"];
         if ([b isKindOfClass:[NSString class]] && [(NSString *)b length] > 0) {
             if (![b isEqualToString:WXXLastLaunchedBid]) {
                 WXXLastLaunchedBid = [b copy];
