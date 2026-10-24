@@ -42,10 +42,6 @@ static void wrLog(NSString *msg) {
 //   （WXRelayTweak）写共享文件，本模块只读。
 static BOOL WRBannerFixDone = NO;
 
-static NSString *WRFrontmostStatePath(void) {
-    return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.frontmost";
-}
-
 static NSString *WRPrefsPath(void) {
     return @"/var/mobile/Library/Preferences/com.777qwq.wxrelay.plist";
 }
@@ -58,14 +54,8 @@ static BOOL WRBannerEnabled(void) {
     } @catch (NSException *e) { return YES; }
 }
 
-// SB 侧写入："1"=用户此刻真的在看微信
-static BOOL WRUserLookingAtWeChat(void) {
-    @try {
-        NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:WRFrontmostStatePath()];
-        id v = p[@"frontmost"];
-        return [v isKindOfClass:[NSString class]] && [(NSString *)v isEqualToString:@"1"];
-    } @catch (NSException *e) { return NO; }
-}
+// SB 侧写共享文件判真前台（v0.16 权威版定义在后）
+static BOOL WRUserLookingAtWeChat(void);
 
 static void WRAddWillPresent(void) {
     if (WRBannerFixDone) return;
@@ -304,7 +294,7 @@ static void WRPostBanner(NSString *title, NSString *body, NSString *threadId) {
         id req = ((id(*)(id,SEL,id,id,id))objc_msgSend)(reqCls, @selector(requestWithIdentifier:content:trigger:),
             [NSString stringWithFormat:@"wxr-%.0f", [[NSDate date] timeIntervalSince1970] * 100], content, trigger);
         [content release];
-        ((void(*)(id,SEL,id,id,id))objc_msgSend)(center, @selector(addNotificationRequest:withCompletionHandler:), req,
+        ((void(*)(id,SEL,id,id))objc_msgSend)(center, @selector(addNotificationRequest:withCompletionHandler:), req,
             ^(NSError *err){ if (err) wrLog([NSString stringWithFormat:@"banner add ERR: %@", err.localizedDescription]); });
         wrLog([NSString stringWithFormat:@"banner: UN posted '%@'", title ?: @""]);
     } @catch (NSException *e) {
