@@ -1131,7 +1131,7 @@ static void WXFrontmostProbe(void) {
         if ([c1 instancesRespondToSelector:s]) {
             id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
             if (inst) { WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s)); WXFrontmostGetterSel = s;
-                WXLog(@"frontmost: SBApplicationController/frontmostApplication"); return; }
+                NSLog(@"frontmost: SBApplicationController/frontmostApplication"); return; }
         }
         // 候选1b：任何 frontmost* 方法
         unsigned int n = 0; Method *ms = class_copyMethodList(c1, &n);
@@ -1142,7 +1142,7 @@ static void WXFrontmostProbe(void) {
                 id inst = ((id(*)(id,SEL))objc_msgSend)(c1, @selector(sharedInstance));
                 if (inst && [inst respondsToSelector:s2]) {
                     WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s2)); WXFrontmostGetterSel = s2;
-                    WXLog([NSString stringWithFormat:@"frontmost: SBApplicationController/%@", nm]); free(ms); return;
+                    NSLog(@"%@", [NSString stringWithFormat:@"frontmost: SBApplicationController/%@", nm]); free(ms); return;
                 }
             }
         }
@@ -1156,11 +1156,11 @@ static void WXFrontmostProbe(void) {
             if ([c2 instancesRespondToSelector:s]) {
                 id inst = ((id(*)(id,SEL))objc_msgSend)(c2, @selector(sharedInstance));
                 if (inst) { WXFrontmostGetterTarget = inst; WXFrontmostGetterImp = method_getImplementation(class_getInstanceMethod([inst class], s)); WXFrontmostGetterSel = s;
-                    WXLog([NSString stringWithFormat:@"frontmost: SBMainWorkspace/%@", nm]); return; }
+                    NSLog(@"%@", [NSString stringWithFormat:@"frontmost: SBMainWorkspace/%@", nm]); return; }
             }
         }
     }
-    WXLog(@"frontmost: no getter found — writer dormant (weChat side will banner everywhere)");
+    NSLog(@"frontmost: no getter found — writer dormant (weChat side will banner everywhere)");
 }
 
 static void WXFrontmostPollCycle(void) {
@@ -1179,9 +1179,9 @@ static void WXFrontmostPollCycle(void) {
             NSDictionary *d = @{@"frontmost": bid,
                                 @"ts": [NSString stringWithFormat:@"%.0f", [[NSDate date] timeIntervalSince1970]]};
             [d writeToFile:WXFrontmostFilePath() atomically:YES];
-            WXLog([NSString stringWithFormat:@"frontmost -> '%@'", bid]);
+            NSLog(@"%@", [NSString stringWithFormat:@"frontmost -> '%@'", bid]);
         }
-    } @catch (NSException *e) { WXLog([NSString stringWithFormat:@"frontmost EXC %@", e.name]); }
+    } @catch (NSException *e) { NSLog(@"%@", [NSString stringWithFormat:@"frontmost EXC %@", e.name]); }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)),
                    dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         WXFrontmostPollCycle();
