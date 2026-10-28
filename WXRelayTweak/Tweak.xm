@@ -224,7 +224,14 @@ static void WXForwardMatchedRecordToWeChat(WXNotificationRecord *record) {
     if (!WXMarkForwardedIfNew(record)) return;
     NSArray<NSDictionary *> *targets = WXWeChatTargetList();
     if (targets.count == 0) return;
-    NSString *text = record.joinedText.length > 0 ? record.joinedText : record.messageText;
+    // v1.0.6 转发格式：群聊=群聊/昵称/内容三行，私聊=昵称/内容两行（匹配引擎仍用 joinedText，不受影响）
+    NSString *body = record.body.length ? record.body : record.messageText;
+    NSString *text;
+    if (record.subtitle.length > 0) {
+        text = [NSString stringWithFormat:@"群聊：%@\n昵称：%@\n内容：%@", record.title, record.subtitle, body];
+    } else {
+        text = [NSString stringWithFormat:@"昵称：%@\n内容：%@", record.title, body];
+    }
     NSMutableArray<NSDictionary *> *items = [NSMutableArray array]; // [{id, text}]
     for (NSDictionary *target in targets) {
         if (![target isKindOfClass:[NSDictionary class]]) continue;
