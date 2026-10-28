@@ -205,33 +205,6 @@ static NSString *WRContactDisplayName(NSString *wxid) {
     } @catch (NSException *e) { return wxid; }
 }
 
-// 群成员显示名：群的 CContact.getChatRoomMemberDisplayName:（群昵称优先语义），回落通讯录备注/昵称
-static NSString *WRChatRoomMemberDisplayName(NSString *groupUsr, NSString *memberUsr) {
-    NSString *fallback = WRContactDisplayName(memberUsr ?: @"");
-    if (groupUsr.length == 0 || memberUsr.length == 0) return fallback;
-    @try {
-        Class CContactMgr = objc_getClass("CContactMgr");
-        Class MMServiceCenter = objc_getClass("MMServiceCenter");
-        if (!CContactMgr || !MMServiceCenter) return fallback;
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
-        id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
-        if (!mgr || ![mgr respondsToSelector:@selector(getContactList:contactType:)]) return fallback;
-        id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
-        if (![list isKindOfClass:[NSArray class]]) return fallback;
-        for (id c in list) {
-            if (![c respondsToSelector:@selector(m_nsUsrName)]) continue;
-            NSString *u = WRStr([c valueForKey:@"m_nsUsrName"]);
-            if (![u isEqualToString:groupUsr]) continue;
-            if ([c respondsToSelector:@selector(getChatRoomMemberDisplayName:)]) {
-                NSString *n = WRStr(((id(*)(id,SEL,id))objc_msgSend)(c, @selector(getChatRoomMemberDisplayName:), memberUsr));
-                if (n.length > 0) return n;
-            }
-            break;
-        }
-        return fallback;
-    } @catch (NSException *e) { return fallback; }
-}
-
 static NSString *WRSelfWxid = nil;
 
 static void WRResolveSelfWxid(void) {
@@ -397,7 +370,9 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
             || (actualUsr.length && [actualUsr isEqualToString:WRSelfWxid]))) return;
         BOOL isGroup = [fromUsr hasSuffix:@"@chatroom"];
         NSString *chatName = WRContactDisplayName(fromUsr);
-        NSString *speaker = isGroup && actualUsr.length ? WRChatRoomMemberDisplayName(fromUsr, actualUsr) : nil;
+        // v1.0.8 回退：getChatRoomMemberDisplayName: 在 8.0.78 上炸（1.0.5 起闪退的头号嫌疑，头文件系 8.0.54/55），
+// 群成员昵称改走纯安全路径——发言人 wxid 过通讯录扫（好友=备注/昵称，非好友=wxid），群 CContact 成员接口挂账待安全方案
+NSString *speaker = (isGroup && actualUsr.length) ? WRContactDisplayName(actualUsr) : nil;
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
         NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
