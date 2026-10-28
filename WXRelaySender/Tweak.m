@@ -279,6 +279,57 @@ static void WRSpoolMsgRecord(NSDictionary *record) {
 static IMP WRAsyncOnAddMsgOrig = NULL;
 static NSString *WRHookedSelectorName = nil;
 
+// 引用消息 appmsg XML（type 57）→ 转发文本："回复正文\n引用 xxx：原句"。非 type57 返回 nil（不转发）。
+static NSString *WRXmlUnescape(NSString *s) {
+    if (!s) return nil;
+    s = [s stringByReplacingOccurrencesOfString:@"&lt;" withString:@"<"];
+    s = [s stringByReplacingOccurrencesOfString:@"&gt;" withString:@">"];
+    s = [s stringByReplacingOccurrencesOfString:@"&quot;" withString:@"\""];
+    s = [s stringByReplacingOccurrencesOfString:@"&apos;" withString:@"'"];
+    s = [s stringByReplacingOccurrencesOfString:@"&amp;" withString:@"&"]; // 最后还原
+    return s;
+}
+
+static NSString *WRXmlTagText(NSString *xml, NSString *tag) {
+    NSString *open = [NSString stringWithFormat:@"<%@>", tag];
+    NSString *close = [NSString stringWithFormat:@"</%@>", tag];
+    NSRange r = [xml rangeOfString:open];
+    if (r.location == NSNotFound) return nil;
+    NSRange r2 = [xml rangeOfString:close options:0 range:NSMakeRange(r.location + r.length, xml.length - r.location - r.length)];
+    if (r2.location == NSNotFound) return nil;
+    return [xml substringWithRange:NSMakeRange(r.location + r.length, r2.location - (r.location + r.length))];
+}
+
+static NSString *WRParseReferAppMsg(NSString *xml) {
+    @try {
+        if ([xml rangeOfString:@"<type>57<"].location == NSNotFound) return nil;
+        NSString *reply = WRXmlUnescape(WRXmlTagText(xml, @"title"));
+        NSString *refer = nil;
+        NSRange rb = [xml rangeOfString:@"<refermsg>"];
+        NSRange re = [xml rangeOfString:@"</refermsg>"];
+        if (rb.location != NSNotFound && re.location != NSNotFound && re.location > rb.location) {
+            NSString *block = [xml substringWithRange:NSMakeRange(rb.location, re.location + re.length - rb.location)];
+            NSString *who = WRXmlUnescape(WRXmlTagText(block, @"displayname"));
+            NSString *what = WRXmlUnescape(WRXmlTagText(block, @"content"));
+            if (what.length > 0 && [what hasPrefix:@"<"]) {
+                // 引用的是链接/卡片等富消息：取内层标题
+                NSString *inner = WRXmlUnescape(WRXmlTagText(what, @"title"));
+                what = inner.length > 0 ? inner : nil;
+            }
+            if (what.length > 0) what = [what stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+            if (what.length > 60) what = [[what substringToIndex:60] stringByAppendingString:@"…"];
+            if (who.length > 0 && what.length > 0) refer = [NSString stringWithFormat:@"引用 %@：%@", who, what];
+            else if (who.length > 0) refer = [NSString stringWithFormat:@"引用 %@", who];
+        }
+        if (reply.length > 0 && refer.length > 0) return [NSString stringWithFormat:@"%@\n%@", reply, refer];
+        if (reply.length > 0) return reply;
+        if (refer.length > 0) return refer;
+        return nil;
+    } @catch (NSException *e) {
+        return nil;
+    }
+}
+
 static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
     if (WRAsyncOnAddMsgOrig) ((void(*)(id,SEL,id,id))WRAsyncOnAddMsgOrig)(self, _cmd, arg1, wrap);
     @try {
@@ -287,12 +338,16 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         if (WRInSend) return; // 发送中：跳过本次回声/重入
         if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
         WRWriteMsgSourceFlag();
-        // 只收文本（v1）；系统消息/媒体后续需要再说
+        // 收文本 + 引用消息（引用=msgType 49 的 appmsg XML，type 57 + refermsg 节点，CMessageWrap isReferMsgType 同源）；系统消息/媒体仍不收
         unsigned int msgType = 0;
         if ([wrap respondsToSelector:@selector(m_uiMessageType)]) msgType = ((unsigned int(*)(id,SEL))objc_msgSend)(wrap, @selector(m_uiMessageType));
-        if (msgType != 1) return;
+        if (msgType != 1 && msgType != 49) return;
         NSString *content = [wrap respondsToSelector:@selector(m_nsContent)] ? WRStr([wrap valueForKey:@"m_nsContent"]) : nil;
         if (content.length == 0) return;
+        if (msgType == 49) {
+            content = WRParseReferAppMsg(content);
+            if (content.length == 0) return; // 非 type57 的 appmsg（链接/文件/小程序等）维持不转
+        }
         // 自发消息防线：官方 isSender 位 + 已发文本 60 秒回显双保险，杜绝回环
         BOOL isSender = NO;
         if ([wrap respondsToSelector:@selector(m_bIsSender)]) isSender = ((BOOL(*)(id,SEL))objc_msgSend)(wrap, @selector(m_bIsSender));
