@@ -389,9 +389,12 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         NSString *chatName = WRContactDisplayName(fromUsr);
         NSString *speaker = nil;
         if (isGroup) {
-            // v1.0.3 诊断探针：actualUsr 取值与群成员昵称接口返回（定位后移除）
+            // v1.0.4 诊断探针：新架构发言人候选字段全量取证（定位后移除）
+            #define WRP(k) [wrap respondsToSelector:@selector(k)] ? (WRStr([wrap valueForKey:@#k]) ?: @"(空)") : @"(无属性)"
+            wrLog([NSString stringWithFormat:@"probe2 realChatUsr=%@ displayName=%@ sourceUser=%@ sourceDisp=%@",
+                  WRP(m_nsRealChatUsr), WRP(m_nsDisplayName), WRP(m_nsSourceUsername), WRP(m_nsSourceDisplayname)]);
+            #undef WRP
             speaker = actualUsr.length ? WRChatRoomMemberDisplayName(fromUsr, actualUsr) : nil;
-            wrLog([NSString stringWithFormat:@"probe group: actualUsr=%@ speaker=%@", actualUsr ?: @"(nil)", speaker ?: @"(nil)"]);
         }
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
