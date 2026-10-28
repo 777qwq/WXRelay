@@ -380,22 +380,16 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         if ([wrap respondsToSelector:@selector(m_bIsSender)]) isSender = ((BOOL(*)(id,SEL))objc_msgSend)(wrap, @selector(m_bIsSender));
         if (isSender || WRTextWasRecentlySent(content)) return;
         NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? WRStr([wrap valueForKey:@"m_nsFromUsr"]) : nil;
-        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsActualUsr)] ? WRStr([wrap valueForKey:@"m_nsActualUsr"]) : nil;
+        // v1.0.5: m_nsActualUsr 已被 8.x 新架构除名（头文件 0 命中），发言人改取 m_nsRealChatUsr，旧架构字段保留兜底
+        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsRealChatUsr)] ? WRStr([wrap valueForKey:@"m_nsRealChatUsr"]) : nil;
+        if (actualUsr.length == 0 && [wrap respondsToSelector:@selector(m_nsActualUsr)]) actualUsr = WRStr([wrap valueForKey:@"m_nsActualUsr"]);
         if (fromUsr.length == 0) return;
         // v2.8.7 自身消息防线：来源 wxid 是自己（单聊直发 / 群聊 actualUsr）一律跳过
         if (WRSelfWxid.length && ([fromUsr isEqualToString:WRSelfWxid]
             || (actualUsr.length && [actualUsr isEqualToString:WRSelfWxid]))) return;
         BOOL isGroup = [fromUsr hasSuffix:@"@chatroom"];
         NSString *chatName = WRContactDisplayName(fromUsr);
-        NSString *speaker = nil;
-        if (isGroup) {
-            // v1.0.4 诊断探针：新架构发言人候选字段全量取证（定位后移除）
-            #define WRP(k) [wrap respondsToSelector:@selector(k)] ? (WRStr([wrap valueForKey:@#k]) ?: @"(空)") : @"(无属性)"
-            wrLog([NSString stringWithFormat:@"probe2 realChatUsr=%@ displayName=%@ sourceUser=%@ sourceDisp=%@",
-                  WRP(m_nsRealChatUsr), WRP(m_nsDisplayName), WRP(m_nsSourceUsername), WRP(m_nsSourceDisplayname)]);
-            #undef WRP
-            speaker = actualUsr.length ? WRChatRoomMemberDisplayName(fromUsr, actualUsr) : nil;
-        }
+        NSString *speaker = isGroup && actualUsr.length ? WRChatRoomMemberDisplayName(fromUsr, actualUsr) : nil;
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
         NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
