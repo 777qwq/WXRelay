@@ -358,7 +358,15 @@ static NSString *WRParseReferAppMsg(NSString *xml) {
 }
 
 static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
-    if (WRAsyncOnAddMsgOrig) ((void(*)(id,SEL,id,id))WRAsyncOnAddMsgOrig)(self, _cmd, arg1, wrap);
+    if (WRAsyncOnAddMsgOrig) {
+        // v1.0.7 防炸兜底：WxRelay 延迟挂载后位于 hook 链上游，下游 tweak（如 WxNotify）
+        // 在消息处理中抛的 ObjC 异常沿栈传回此调用点，吞掉以免整条链闪退；微信原方法已在下游先执行过
+        @try {
+            ((void(*)(id,SEL,id,id))WRAsyncOnAddMsgOrig)(self, _cmd, arg1, wrap);
+        } @catch (NSException *e) {
+            wrLog([NSString stringWithFormat:@"B: 下游hook异常已拦截: %@ %@", e.name, e.reason]);
+        }
+    }
     @try {
         // 候选参数序归一：单参候选时 wrap 落在 arg1
         if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
@@ -450,7 +458,11 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelaySender ctor");
         WRInitLastSentStore();
-        WRInstallMsgSourceHook();
+        // v1.0.7 延迟挂载：让其它消息 hook（WxNotify 等）先挂，WxRelay 排 hook 链尾（上游），
+        // 配合 orig 处的 @try 兜住下游异常。窗口期(3s)内的消息漏转发，可接受
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            WRInstallMsgSourceHook();
+        });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
         });
