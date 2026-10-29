@@ -21,6 +21,20 @@ static void wrLog(NSString *msg) {
         dispatch_once(&once, ^{ f = [NSDateFormatter new]; f.dateFormat = @"HH:mm:ss"; });
         NSString *line = [NSString stringWithFormat:@"[%@] %@\n", [f stringFromDate:[NSDate date]], msg];
         NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay.log"];
+        // v1.0.10 日志上限 30KB：超限裁头部保留尾部 15KB（对齐到行首）
+        NSDictionary *attr = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil];
+        if (attr && [attr fileSize] > 30 * 1024) {
+            NSData *all = [NSData dataWithContentsOfFile:path];
+            unsigned long long keep = 15 * 1024;
+            if (all.length > keep) {
+                NSRange cut = NSMakeRange(all.length - keep, keep);
+                NSData *tail = [all subdataWithRange:cut];
+                NSRange nl = [tail rangeOfData:[@"\n" dataUsingEncoding:NSUTF8StringEncoding] options:0 range:NSMakeRange(0, tail.length > 64 ? 64 : tail.length)];
+                if (nl.location != NSNotFound && nl.location + 1 < tail.length)
+                    tail = [tail subdataWithRange:NSMakeRange(nl.location + 1, tail.length - nl.location - 1)];
+                [tail writeToFile:path atomically:YES];
+            }
+        }
         NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
         if (!fh) {
             [[NSFileManager defaultManager] createFileAtPath:path contents:nil attributes:nil];
@@ -378,6 +392,27 @@ static void WRProbeGroupMemberAPI(id groupContact, NSString *groupUsr) {
         }
         free(cms);
         wrLog([NSString stringWithFormat:@"probe3 %@\n  实例: %@\n  类: %@", groupUsr, inst, cls]);
+        // probe4：直读成员数据载体字段（纯 KVC，零方法调用）
+        for (NSString *k in @[@"m_nsChatRoomMemList", @"m_nsChatRoomData", @"m_ChatRoomBypMemberData"]) {
+            @try {
+                id v = [groupContact valueForKey:k];
+                if (v == nil) { wrLog([NSString stringWithFormat:@"probe4 %@ = (nil)", k]); continue; }
+                if ([v isKindOfClass:[NSString class]]) {
+                    NSString *t = (NSString *)v;
+                    wrLog([NSString stringWithFormat:@"probe4 %@ = NSString len=%lu 前缀:%@", k, (unsigned long)t.length, [t substringToIndex:MIN(300, t.length)]]);
+                } else if ([v isKindOfClass:[NSData class]]) {
+                    NSData *d = (NSData *)v;
+                    NSMutableString *hex = [NSMutableString string];
+                    const unsigned char *b = d.bytes;
+                    for (unsigned int i = 0; i < MIN(48, d.length); i++) [hex appendFormat:@"%02x", b[i]];
+                    wrLog([NSString stringWithFormat:@"probe4 %@ = NSData len=%lu hex头:%@", k, (unsigned long)d.length, hex]);
+                } else {
+                    wrLog([NSString stringWithFormat:@"probe4 %@ = %@", k, NSStringFromClass([v class])]);
+                }
+            } @catch (NSException *e) {
+                wrLog([NSString stringWithFormat:@"probe4 %@ EXC: %@", k, e.name]);
+            }
+        }
     } @catch (NSException *e) {
         wrLog([NSString stringWithFormat:@"probe3 EXC: %@", e.name]);
     }
