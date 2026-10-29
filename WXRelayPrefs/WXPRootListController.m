@@ -259,7 +259,7 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
                                                              detail:nil
                                                                cell:PSSwitchCell
                                                                edit:nil];
-    diagSwitch->identifier = WXPDiagResultSpecifierID;
+    [diagSwitch setProperty:@"WXP_DIAG_RESULT" forKey:PSIDKey];
     [diagSwitch setProperty:WXDiagLogEnabledKey forKey:PSKeyNameKey];
     [diagSwitch setProperty:@NO forKey:PSDefaultValueKey];
     [specifiers addObject:diagSwitch];
