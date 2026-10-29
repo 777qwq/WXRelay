@@ -565,6 +565,14 @@ static NSString *WRDiagClassMethods(Class C, NSString *needle1, NSString *needle
     return out.length ? out : @"(无匹配)";
 }
 
+// v1.2.2 分段落盘：每路探针跑完即写文件，中途炸了也留得住已完成的段落
+static void WRDiagWrite(NSMutableString *r) {
+    @try {
+        NSString *diagPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay-diag.log"];
+        [r writeToFile:diagPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch (NSException *e) { }
+}
+
 static void WRDiagRun(void) {
     NSMutableString *r = [NSMutableString string];
     static NSDateFormatter *df = nil;
@@ -600,6 +608,8 @@ static void WRDiagRun(void) {
             }
             [r appendFormat:@"  可用入口: %@\n", found ?: @"(无——send/通讯录链路不可用)"];
             // v1.1.6 补探：MMContextManager 路径（8.0.5x~7x 的真实入口）
+            // v1.2.2 修正：直接探 **MMContext 本体** 的 getService:——内层 m_serviceCenter 的 getService:
+            // 是已知必炸调用（1.1.9 实证），探针自己不能再踩
             Class MMCM = objc_getClass("MMContextManager");
             [r appendFormat:@"  MMContextManager defaultManager: %@\n", (MMCM && [MMCM respondsToSelector:@selector(defaultManager)]) ? @"存在" : @"无"];
             if (MMCM && [MMCM respondsToSelector:@selector(defaultManager)]) {
@@ -608,10 +618,8 @@ static void WRDiagRun(void) {
                     NSArray *ctxs = dm ? [dm valueForKey:@"m_contexts"] : nil;
                     id ctx = (ctxs.count > 0) ? ctxs[0] : nil;
                     if (ctx) {
-                        SEL scSel = NSSelectorFromString(@"serviceCenter");
-                        id sc = [ctx respondsToSelector:scSel] ? ((id(*)(id,SEL))objc_msgSend)(ctx, scSel) : nil;
-                        id cmgr = sc ? ((id(*)(id,SEL,id))objc_msgSend)(sc, @selector(getService:), objc_getClass("CMessageMgr")) : nil;
-                        [r appendFormat:@"  MMContext 路径: contexts=%lu serviceCenter=%@ CMessageMgr=%@\n", (unsigned long)ctxs.count, sc ? @"拿到" : @"nil", cmgr ? @"拿到" : @"nil"];
+                        id cmgr = [ctx respondsToSelector:@selector(getService:)] ? ((id(*)(id,SEL,id))objc_msgSend)(ctx, @selector(getService:), objc_getClass("CMessageMgr")) : nil;
+                        [r appendFormat:@"  MMContext 路径: contexts=%lu hasGetService=%d CMessageMgr=%@\n", (unsigned long)ctxs.count, [ctx respondsToSelector:@selector(getService:)], cmgr ? @"拿到" : @"nil"];
                     } else {
                         [r appendFormat:@"  MMContext 路径: contexts=%@\n", ctxs ? @"(空)" : @"nil"];
                     }
@@ -623,14 +631,18 @@ static void WRDiagRun(void) {
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     @try {
-        [r appendString:@"\n[2] 消息捕获\n"];
+            WRDiagWrite(r); // v1.2.2 段落落盘
+
+    [r appendString:@"\n[2] 消息捕获\n"];
         Class CMessageMgr = objc_getClass("CMessageMgr");
         [r appendFormat:@"  CMessageMgr AddMsg 系: %@\n", WRDiagClassMethods(CMessageMgr, @"AddMsg", @"NewMsg")];
         [r appendFormat:@"  hook 挂载: %@\n", WRHookedSelectorName ?: @"(未挂载)"];
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     @try {
-        [r appendString:@"\n[3] CMessageWrap 字段\n"];
+            WRDiagWrite(r); // v1.2.2 段落落盘
+
+    [r appendString:@"\n[3] CMessageWrap 字段\n"];
         Class W = objc_getClass("CMessageWrap");
         for (NSString *f in @[@"m_uiMessageType", @"m_nsContent", @"m_nsFromUsr", @"m_nsToUsr", @"m_nsRealChatUsr", @"m_nsActualUsr", @"m_nsMsgId", @"m_bIsSender", @"m_uiCreateTime"]) {
             [r appendFormat:@"  %@: %@\n", f, [W instancesRespondToSelector:NSSelectorFromString(f)] ? @"有" : @"无"];
@@ -638,7 +650,9 @@ static void WRDiagRun(void) {
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     @try {
-        [r appendString:@"\n[4] 通讯录与群数据\n"];
+            WRDiagWrite(r); // v1.2.2 段落落盘
+
+    [r appendString:@"\n[4] 通讯录与群数据\n"];
         Class CContactMgr = objc_getClass("CContactMgr");
         // v1.1.11：改走 v1.1.9 实证入口（MMContext 本体 getService:），旧候选单例普查并入 [1]
         id center = WRServiceCenter();
@@ -666,7 +680,9 @@ static void WRDiagRun(void) {
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     @try {
-        [r appendString:@"\n[5] 直发链\n"];
+            WRDiagWrite(r); // v1.2.2 段落落盘
+
+    [r appendString:@"\n[5] 直发链\n"];
         Class SU = objc_getClass("SettingUtil");
         [r appendFormat:@"  SettingUtil: %@\n", SU ? @"有" : @"无"];
         [r appendFormat:@"  getLocalUsrName:: %@\n", SU && [SU instancesRespondToSelector:@selector(getLocalUsrName:)] ? @"有" : @"无"];
@@ -675,6 +691,7 @@ static void WRDiagRun(void) {
         [r appendString:@"  (诊断不真发消息)\n"];
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
+        WRDiagWrite(r);
     [r appendString:@"===== 诊断结束 =====\n"];
     // v1.1.11 诊断改版：结果写微信沙盒 tmp/wxrelay-diag.log（与 wxrelay.log 同目录），不再走剪贴板/CFPreferences
     NSString *diagPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay-diag.log"];
