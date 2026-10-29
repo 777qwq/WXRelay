@@ -600,8 +600,10 @@ static void WRDiagRun(void) {
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     [r appendString:@"===== 诊断结束 =====\n"];
+    // v1.1.4：结果直写系统剪贴板——CFPreferences/文件在 roothide 跨进程均不可靠，UIPasteboard 是系统服务 100% 可达
+    [UIPasteboard generalPasteboard].string = r;
     WXDiagnosticsSaveResult(r);
-    wrLog(@"diag: 诊断完成，结果已写入（CFPreferences 域）");
+    wrLog(@"diag: 诊断完成，结果已写入（系统剪贴板+CFPreferences 双写）");
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/done"), NULL, NULL, YES);
 }
 

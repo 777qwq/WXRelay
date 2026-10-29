@@ -58,6 +58,11 @@ static void WXPDiagDoneCallback(CFNotificationCenterRef __unused c, void __unuse
 
 - (void)reloadResult {
     NSString *text = WXDiagnosticsLoadResult();
+    if (text.length == 0) {
+        // v1.1.4：CFPreferences 通道在 roothide 跨进程不可靠——回退从系统剪贴板读（诊断完成时微信侧已写入）
+        NSString *pb = [UIPasteboard generalPasteboard].string;
+        text = (pb.length > 0 && [pb hasPrefix:@"===== WxRelay 诊断"]) ? pb : @"";
+    }
     _textView.text = (text.length > 0) ? text : WXPLocalizedString(@"DIAG_EMPTY");
 }
 
