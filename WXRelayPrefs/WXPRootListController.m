@@ -6,7 +6,7 @@
 #import "WXPRulesListEditorController.h"
 #import "WXPWeChatTargetEditorController.h"
 #import "WXPLogsListController.h"
-#import "WXPDiagController.h"
+// v1.1.11：WXPDiagController 已删（诊断改开关式落文件）
 
 @interface WXPRootListController () <UITextViewDelegate>
 @end
@@ -247,14 +247,22 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
                                                action:@selector(openLogs:)
                                            identifier:WXPFilteredLogsSpecifierID]];
 
-    // v1.1.2 诊断区块：独立开关（不受全局开关控制），默认关
+    // v1.1.11 诊断改版：开关式（仿 cputhermal 风格）——默认关零文件，开启后微信沙盒 tmp 落 wxrelay-diag.log
     PSSpecifier *diagGroup = [PSSpecifier emptyGroupSpecifier];
     [diagGroup setProperty:WXPLocalizedString(@"DIAG_SECTION_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:diagGroup];
 
-    [specifiers addObject:[self linkSpecifierWithName:WXPLocalizedString(@"DIAG_RESULT")
-                                               action:@selector(openDiag:)
-                                           identifier:WXPDiagResultSpecifierID]];
+    PSSpecifier *diagSwitch = [PSSpecifier preferenceSpecifierNamed:WXPLocalizedString(@"DIAG_GENERATE")
+                                                             target:self
+                                                                set:@selector(setDiagLogValue:specifier:)
+                                                                get:@selector(readPreferenceValue:)
+                                                             detail:nil
+                                                               cell:PSSwitchCell
+                                                               edit:nil];
+    diagSwitch->identifier = WXPDiagResultSpecifierID;
+    [diagSwitch setProperty:WXDiagLogEnabledKey forKey:PSKeyNameKey];
+    [diagSwitch setProperty:@NO forKey:PSDefaultValueKey];
+    [specifiers addObject:diagSwitch];
 
     _specifiers = [specifiers copy];
     return _specifiers;
@@ -379,9 +387,12 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
     [self.navigationController pushViewController:controller animated:YES];
 }
 
-- (void)openDiag:(PSSpecifier *)specifier {
-    WXPDiagController *controller = [[WXPDiagController alloc] initWithStyle:UITableViewStyleInsetGrouped];
-    [self.navigationController pushViewController:controller animated:YES];
+- (void)setDiagLogValue:(id)value specifier:(PSSpecifier *)specifier {
+    [self setPreferenceValue:value specifier:specifier];
+    // v1.1.11：开启瞬间通知微信立即跑一次诊断（微信运行中即落文件；未运行则等首条消息就绪后自动补跑）
+    if ([value boolValue]) {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/run"), NULL, NULL, YES);
+    }
 }
 
 - (BOOL)openProjectPageURL {

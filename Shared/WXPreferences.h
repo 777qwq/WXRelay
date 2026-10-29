@@ -13,6 +13,7 @@ extern NSString * const WXGlobalRegexKey;
 extern NSString * const WXAppRulesKey;
 extern NSString * const WXDeleteFilteredNotificationsKey;
 extern NSString * const WXLoggingEnabledKey;
+extern NSString * const WXDiagLogEnabledKey;
 extern NSString * const WXLoggingDisabledBundleIdentifiersKey;
 extern NSString * const WXLogEntryLimitKey;
 extern NSString * const WXPrefOnlyConfiguredAppsKey;

@@ -17,6 +17,8 @@
 #import "../Shared/WXPreferences.h"
 
 static void wrLog(NSString *msg);
+static void WRResolveSelfWxid(void);   // v1.1.11 前置声明（WRSendMessage 在定义前调用）
+static NSString *WRSelfWxid = nil;
 // v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
 // MMContextManager.defaultManager → 当前 MMContext（v1.1.9：ctx 自带 getService:，直接用）
 static id WRServiceCenter(void) {
@@ -453,6 +455,7 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
             wrLog(@"B: first message -> ready, lazy resolve");
             WRResolveSelfWxid();
             WRFlushTasks();
+            WRDiagIfEnabled(); // v1.1.11：诊断开关开着就绪后自动跑一次
         }
         WRWriteMsgSourceFlag();
         // 收文本 + 引用消息（引用=msgType 49 的 appmsg XML，type 57 + refermsg 节点，CMessageWrap isReferMsgType 同源）；系统消息/媒体仍不收
@@ -636,13 +639,9 @@ static void WRDiagRun(void) {
     @try {
         [r appendString:@"\n[4] 通讯录与群数据\n"];
         Class CContactMgr = objc_getClass("CContactMgr");
-        Class MMSC = objc_getClass("MMServiceCenter");
-        id center = nil;
-        for (NSString *cand in @[@"defaultCenter", @"sharedInstance", @"sharedCenter"]) {
-            SEL sel = NSSelectorFromString(cand);
-            if ([MMSC respondsToSelector:sel]) { center = ((id(*)(id,SEL))objc_msgSend)(MMSC, sel); break; }
-        }
-        if (!center) { [r appendString:@"  服务中心不可用，跳过\n"]; }
+        // v1.1.11：改走 v1.1.9 实证入口（MMContext 本体 getService:），旧候选单例普查并入 [1]
+        id center = WRServiceCenter();
+        if (![center respondsToSelector:@selector(getService:)]) { [r appendString:@"  服务中心不可用，跳过\n"]; }
         else {
             id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
             NSArray *list = [mgr respondsToSelector:@selector(getContactList:contactType:)] ? ((NSArray *(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u) : nil;
@@ -676,17 +675,26 @@ static void WRDiagRun(void) {
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     [r appendString:@"===== 诊断结束 =====\n"];
-    // v1.1.4：结果直写系统剪贴板——CFPreferences/文件在 roothide 跨进程均不可靠，UIPasteboard 是系统服务 100% 可达
-    [UIPasteboard generalPasteboard].string = r;
-    WXDiagnosticsSaveResult(r);
-    wrLog(@"diag: 诊断完成，结果已写入（系统剪贴板+CFPreferences 双写）");
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/done"), NULL, NULL, YES);
+    // v1.1.11 诊断改版：结果写微信沙盒 tmp/wxrelay-diag.log（与 wxrelay.log 同目录），不再走剪贴板/CFPreferences
+    NSString *diagPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay-diag.log"];
+    [r writeToFile:diagPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    wrLog(@"diag: 诊断完成，已写入 wxrelay-diag.log");
 }
 
 static void WRDiagDarwinCallback(CFNotificationCenterRef __unused c, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (!WRReady) { wrLog(@"diag: not ready, skip (首次消息就绪后自动补跑)"); return; } // v1.1.11 就绪门
         WRDiagRun();
     });
+}
+
+// v1.1.11：诊断开关开启时，就绪后自动跑一次
+static void WRDiagIfEnabled(void) {
+    @try {
+        if ([[WXPreferences loadPreferences] objectForKey:WXDiagLogEnabledKey] boolValue) {
+            dispatch_async(dispatch_get_main_queue(), ^{ WRDiagRun(); });
+        }
+    } @catch (NSException *e) { }
 }
 
 __attribute__((constructor)) static void wxrelaySenderCtor(void) {

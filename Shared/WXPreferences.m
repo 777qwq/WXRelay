@@ -27,6 +27,7 @@ NSString * const WXGlobalRegexKey = @"GlobalRegex";
 NSString * const WXAppRulesKey = @"AppRules";
 NSString * const WXDeleteFilteredNotificationsKey = @"DeleteFilteredNotifications";
 NSString * const WXLoggingEnabledKey = @"LoggingEnabled";
+NSString * const WXDiagLogEnabledKey = @"DiagLogEnabled";
 NSString * const WXLoggingDisabledBundleIdentifiersKey = @"LoggingDisabledBundleIdentifiers";
 NSString * const WXLogEntryLimitKey = @"LogEntryLimit";
 NSString * const WXPrefOnlyConfiguredAppsKey = @"PrefOnlyConfiguredApps";
