@@ -1,0 +1,9 @@
+Package: cn.qwq.wxrelay
+Name: WxRelay
+Depends: mobilesubstrate, preferenceloader
+Architecture: iphoneos-arm
+Description: 微信通知转发/回复，支持系统通知和微信消息，全程本地运行，不上报任何东西。设置-WxRelay 配置，即时生效。
+Maintainer: 777qwq
+Author: 777qwq
+Section: Tweaks
+Version: 1.0
