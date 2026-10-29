@@ -345,6 +345,23 @@ static NSString *WRParseReferAppMsg(NSString *xml) {
 }
 
 // v1.0.9 探针：群 CContact 方法名普查（纯反射零调用，每群一次）——为群昵称锁定 8.0.78 真实可用接口
+// v1.0.11 群昵称：从群 CContact 的 m_nsChatRoomData XML 解析成员 DisplayName（纯字符串解析，零微信方法调用）
+static NSString *WRGroupNickFromRoomData(id groupContact, NSString *memberUsr) {
+    if (!groupContact || memberUsr.length == 0) return nil;
+    @try {
+        NSString *xml = WRStr([groupContact valueForKey:@"m_nsChatRoomData"]);
+        if (xml.length == 0) return nil;
+        NSString *open = [NSString stringWithFormat:@"<Member UserName=\"%@\">", memberUsr];
+        NSRange rb = [xml rangeOfString:open];
+        if (rb.location == NSNotFound) return nil;
+        NSRange re = [xml rangeOfString:@"</Member>" options:0 range:NSMakeRange(rb.location + rb.length, xml.length - rb.location - rb.length)];
+        if (re.location == NSNotFound) return nil;
+        NSString *block = [xml substringWithRange:NSMakeRange(rb.location, re.location + re.length - rb.location)];
+        NSString *dn = WRXmlUnescape(WRXmlTagText(block, @"DisplayName"));
+        return dn.length > 0 ? dn : nil;
+    } @catch (NSException *e) { return nil; }
+}
+
 static id WRFindContactObj(NSString *usr) {
     @try {
         Class CContactMgr = objc_getClass("CContactMgr");
@@ -362,60 +379,6 @@ static id WRFindContactObj(NSString *usr) {
         }
     } @catch (NSException *e) { }
     return nil;
-}
-
-static NSMutableSet *WRProbedGroups = nil;
-static void WRProbeGroupMemberAPI(id groupContact, NSString *groupUsr) {
-    if (!groupContact) return;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{ WRProbedGroups = [NSMutableSet set]; });
-    if ([WRProbedGroups containsObject:groupUsr]) return;
-    [WRProbedGroups addObject:groupUsr];
-    @try {
-        Class C = [groupContact class];
-        unsigned int n = 0;
-        Method *ms = class_copyMethodList(C, &n);
-        NSMutableString *inst = [NSMutableString string];
-        for (unsigned int i = 0; i < n; i++) {
-            NSString *sel = NSStringFromSelector(method_getName(ms[i]));
-            if ([sel rangeOfString:@"hatRoom"].location != NSNotFound || [sel rangeOfString:@"ember"].location != NSNotFound)
-                [inst appendFormat:@"%@ ", sel];
-        }
-        free(ms);
-        unsigned int cn = 0;
-        Method *cms = class_copyMethodList(object_getClass(C), &cn);
-        NSMutableString *cls = [NSMutableString string];
-        for (unsigned int i = 0; i < cn; i++) {
-            NSString *sel = NSStringFromSelector(method_getName(cms[i]));
-            if ([sel rangeOfString:@"hatRoom"].location != NSNotFound || [sel rangeOfString:@"ember"].location != NSNotFound)
-                [cls appendFormat:@"%@ ", sel];
-        }
-        free(cms);
-        wrLog([NSString stringWithFormat:@"probe3 %@\n  实例: %@\n  类: %@", groupUsr, inst, cls]);
-        // probe4：直读成员数据载体字段（纯 KVC，零方法调用）
-        for (NSString *k in @[@"m_nsChatRoomMemList", @"m_nsChatRoomData", @"m_ChatRoomBypMemberData"]) {
-            @try {
-                id v = [groupContact valueForKey:k];
-                if (v == nil) { wrLog([NSString stringWithFormat:@"probe4 %@ = (nil)", k]); continue; }
-                if ([v isKindOfClass:[NSString class]]) {
-                    NSString *t = (NSString *)v;
-                    wrLog([NSString stringWithFormat:@"probe4 %@ = NSString len=%lu 前缀:%@", k, (unsigned long)t.length, [t substringToIndex:MIN(300, t.length)]]);
-                } else if ([v isKindOfClass:[NSData class]]) {
-                    NSData *d = (NSData *)v;
-                    NSMutableString *hex = [NSMutableString string];
-                    const unsigned char *b = d.bytes;
-                    for (unsigned int i = 0; i < MIN(48, d.length); i++) [hex appendFormat:@"%02x", b[i]];
-                    wrLog([NSString stringWithFormat:@"probe4 %@ = NSData len=%lu hex头:%@", k, (unsigned long)d.length, hex]);
-                } else {
-                    wrLog([NSString stringWithFormat:@"probe4 %@ = %@", k, NSStringFromClass([v class])]);
-                }
-            } @catch (NSException *e) {
-                wrLog([NSString stringWithFormat:@"probe4 %@ EXC: %@", k, e.name]);
-            }
-        }
-    } @catch (NSException *e) {
-        wrLog([NSString stringWithFormat:@"probe3 EXC: %@", e.name]);
-    }
 }
 
 static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
@@ -459,9 +422,14 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         BOOL isGroup = [fromUsr hasSuffix:@"@chatroom"];
         NSString *chatName = WRContactDisplayName(fromUsr);
         // v1.0.8 回退：getChatRoomMemberDisplayName: 在 8.0.78 上炸（1.0.5 起闪退的头号嫌疑，头文件系 8.0.54/55），
-// 群成员昵称改走纯安全路径——发言人 wxid 过通讯录扫（好友=备注/昵称，非好友=wxid），群 CContact 成员接口挂账待安全方案
-NSString *speaker = (isGroup && actualUsr.length) ? WRContactDisplayName(actualUsr) : nil;
-        if (isGroup) WRProbeGroupMemberAPI(WRFindContactObj(fromUsr), fromUsr); // v1.0.9 一次性普查
+// v1.0.11 群昵称：m_nsChatRoomData XML 的 DisplayName（群昵称）优先，通讯录备注/昵称兜底；
+        // 1.0.5 的 getChatRoomMemberDisplayName: 直调已废（8.0.78 内部炸），数据解析全程零微信方法调用
+        NSString *speaker = nil;
+        if (isGroup && actualUsr.length) {
+            id gc = WRFindContactObj(fromUsr);
+            speaker = WRGroupNickFromRoomData(gc, actualUsr);
+            if (speaker.length == 0) speaker = WRContactDisplayName(actualUsr);
+        }
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
         NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
