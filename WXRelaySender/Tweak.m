@@ -126,6 +126,8 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     WRInSend = YES;
     @try {
         if (!WRReady) { wrLog(@"send: not ready, keep task"); { WRInSend = NO; return NO; } } // v1.1.7 就绪门
+        // v1.1.8 诊断包：本轮只查 resolve 链，禁实际发送，隔离变量
+        wrLog(@"send: diag build, sending disabled, keep task"); { WRInSend = NO; return NO; }
         // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
         BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
             || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
@@ -260,13 +262,21 @@ static void WRResolveSelfWxid(void) {
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return;
         id center = WRServiceCenter(); // v1.1.6 自适应入口
-        id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
+        // v1.1.8 诊断打点：8.0.75 上首条消息后调 getService: 仍闪退——查 center 真实身份
+        wrLog([NSString stringWithFormat:@"resolve: center=%@ class=%@ isMMSC=%d",
+              center ? @"非nil" : @"nil",
+              center ? NSStringFromClass([center class]) : @"-",
+              center ? [center isKindOfClass:MMServiceCenter] : -1]);
+        if (!center || ![center isKindOfClass:MMServiceCenter]) { wrLog(@"resolve: center not MMServiceCenter, abort"); return; }
+        id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
+        wrLog([NSString stringWithFormat:@"resolve: mgr=%@ class=%@", mgr ? @"非nil" : @"nil", mgr ? NSStringFromClass([mgr class]) : @"-"]);
         if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return;
         id me = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getSelfContact));
+        wrLog([NSString stringWithFormat:@"resolve: me=%@ class=%@", me ? @"非nil" : @"nil", me ? NSStringFromClass([me class]) : @"-"]);
         if ([me respondsToSelector:@selector(m_nsUsrName)])
             WRSelfWxid = [[me valueForKey:@"m_nsUsrName"] retain]; // MRC: static strong must retain
         wrLog([NSString stringWithFormat:@"B: self wxid=%@", WRSelfWxid]);
-    } @catch (NSException *e) { }
+    } @catch (NSException *e) { wrLog([NSString stringWithFormat:@"resolve EXC: %@ %@", e.name, e.reason]); }
 }
 
 static void WRWriteMsgSourceFlag(void) {
