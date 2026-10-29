@@ -135,24 +135,23 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     WRInSend = YES;
     @try {
         if (!WRReady) { wrLog(@"send: not ready, keep task"); { WRInSend = NO; return NO; } } // v1.1.7 就绪门
-        // v1.1.8 诊断包：本轮只查 resolve 链，禁实际发送，隔离变量
-        wrLog(@"send: diag build, sending disabled, keep task"); { WRInSend = NO; return NO; }
+        // v1.1.10：诊断结束，恢复实际发送
         // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
         BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
             || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
         NSString *resolved = isPlainID ? targetId : WRResolveTargetID(targetId);
         if (!resolved) { wrLog([NSString stringWithFormat:@"resolve failed, skip '%@'", targetId]); { WRInSend = NO; return NO; } }
         targetId = resolved;
-        Class MMServiceCenter = objc_getClass("MMServiceCenter");
         Class CMessageMgr = objc_getClass("CMessageMgr");
         Class CMessageWrap = objc_getClass("CMessageWrap");
-        Class SettingUtil = objc_getClass("SettingUtil");
-        if (!MMServiceCenter || !CMessageMgr || !CMessageWrap || !SettingUtil) {
+        if (!CMessageMgr || !CMessageWrap) {
             wrLog(@"send: private class missing");
             { WRInSend = NO; return NO; }
         }
-        id center = WRServiceCenter(); // v1.1.6 自适应入口
-        id fromUsr = ((id(*)(id,SEL,long long))objc_msgSend)(SettingUtil, @selector(getLocalUsrName:), 0);
+        id center = WRServiceCenter(); // v1.1.9：MMContext 本体
+        // v1.1.10：SettingUtil getLocalUsrName: 在 8.0.75 不存在（诊断实证），改用 resolve 链的自身 wxid
+        NSString *fromUsr = WRSelfWxid;
+        if (!fromUsr) { WRResolveSelfWxid(); fromUsr = WRSelfWxid; }
         if (!center || !fromUsr) { wrLog(@"send: center/self missing"); { WRInSend = NO; return NO; } }
         if (![center respondsToSelector:@selector(getService:)]) { wrLog(@"send: no getService"); { WRInSend = NO; return NO; } }
         id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CMessageMgr);
