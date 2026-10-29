@@ -67,15 +67,15 @@ static void WXPDiagDoneCallback(CFNotificationCenterRef __unused c, void __unuse
 }
 
 - (void)runDiag {
-    BOOL enabled = WXDiagnosticsEnabledNow();
-    if (!enabled) {
-        UIAlertController *a = [UIAlertController alertControllerWithTitle:nil message:WXPLocalizedString(@"DIAG_NEED_ENABLE") preferredStyle:UIAlertControllerStyleAlert];
-        [a addAction:[UIAlertAction actionWithTitle:WXPLocalizedString(@"DIAG_OK") style:UIAlertActionStyleDefault handler:nil]];
-        [self presentViewController:a animated:YES completion:nil];
-        return;
-    }
-    _textView.text = WXPLocalizedString(@"DIAG_RUNNING");
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/run"), NULL, NULL, YES);
+    // v1.1.5：运行前提醒——诊断由微信进程执行，微信未打开（挂起）时收不到指令
+    UIAlertController *confirm = [UIAlertController alertControllerWithTitle:nil
+        message:WXPLocalizedString(@"DIAG_RUN_HINT") preferredStyle:UIAlertControllerStyleAlert];
+    [confirm addAction:[UIAlertAction actionWithTitle:WXPLocalizedString(@"DIAG_GO") style:UIAlertActionStyleDefault handler:^(UIAlertAction *a1) {
+        _textView.text = WXPLocalizedString(@"DIAG_RUNNING");
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/run"), NULL, NULL, YES);
+    }]];
+    [confirm addAction:[UIAlertAction actionWithTitle:WXPLocalizedString(@"DIAG_CANCEL") style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:confirm animated:YES completion:nil];
 }
 
 - (void)copyResult {

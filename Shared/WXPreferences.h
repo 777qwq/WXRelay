@@ -13,7 +13,6 @@ extern NSString * const WXGlobalRegexKey;
 extern NSString * const WXAppRulesKey;
 extern NSString * const WXDeleteFilteredNotificationsKey;
 extern NSString * const WXLoggingEnabledKey;
-extern NSString * const WXDiagnosticsEnabledKey;
 extern NSString * const WXLoggingDisabledBundleIdentifiersKey;
 extern NSString * const WXLogEntryLimitKey;
 extern NSString * const WXPrefOnlyConfiguredAppsKey;
@@ -70,7 +69,6 @@ extern NSString * const WXMatchModeWhitelistDefault;
 void WXDiagnosticsSaveResult(NSString *text);
 NSString *WXDiagnosticsLoadResult(void);
 NSDictionary *WXPreferencesCopySnapshot(void);
-BOOL WXDiagnosticsEnabledNow(void);
 
 @interface WXPreferences : NSObject
 

@@ -252,17 +252,6 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
     [diagGroup setProperty:WXPLocalizedString(@"DIAG_SECTION_FOOTER") forKey:PSFooterTextGroupKey];
     [specifiers addObject:diagGroup];
 
-    PSSpecifier *diagEnabledSpecifier = [PSSpecifier preferenceSpecifierNamed:WXPLocalizedString(@"DIAG_ENABLED")
-                                                                      target:self
-                                                                         set:@selector(setPreferenceValue:specifier:)
-                                                                         get:@selector(readPreferenceValue:)
-                                                                      detail:nil
-                                                                        cell:PSSwitchCell
-                                                                        edit:nil];
-    [diagEnabledSpecifier setProperty:WXDiagnosticsEnabledKey forKey:PSKeyNameKey];
-    [diagEnabledSpecifier setProperty:@NO forKey:PSDefaultValueKey];
-    [specifiers addObject:diagEnabledSpecifier];
-
     [specifiers addObject:[self linkSpecifierWithName:WXPLocalizedString(@"DIAG_RESULT")
                                                action:@selector(openDiag:)
                                            identifier:WXPDiagResultSpecifierID]];

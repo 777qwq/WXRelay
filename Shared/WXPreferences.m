@@ -27,7 +27,6 @@ NSString * const WXGlobalRegexKey = @"GlobalRegex";
 NSString * const WXAppRulesKey = @"AppRules";
 NSString * const WXDeleteFilteredNotificationsKey = @"DeleteFilteredNotifications";
 NSString * const WXLoggingEnabledKey = @"LoggingEnabled";
-NSString * const WXDiagnosticsEnabledKey = @"DiagnosticsEnabled";
 NSString * const WXLoggingDisabledBundleIdentifiersKey = @"LoggingDisabledBundleIdentifiers";
 NSString * const WXLogEntryLimitKey = @"LogEntryLimit";
 NSString * const WXPrefOnlyConfiguredAppsKey = @"PrefOnlyConfiguredApps";
@@ -181,7 +180,6 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
         WXAppRulesKey,
         WXDeleteFilteredNotificationsKey,
         WXLoggingEnabledKey,
-        WXDiagnosticsEnabledKey,
         WXLoggingDisabledBundleIdentifiersKey,
         WXLogEntryLimitKey,
         WXPrefOnlyConfiguredAppsKey,
@@ -202,7 +200,6 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
         WXAppRulesKey: @{},
         WXDeleteFilteredNotificationsKey: @NO,
         WXLoggingEnabledKey: @NO,
-        WXDiagnosticsEnabledKey: @NO,
         WXLoggingDisabledBundleIdentifiersKey: @[],
         WXLogEntryLimitKey: @([self defaultLogEntryLimit]),
         WXPrefOnlyConfiguredAppsKey: @NO,
@@ -667,9 +664,6 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
     if ([rawPreferences[WXLoggingEnabledKey] isKindOfClass:[NSNumber class]]) {
         normalizedPreferences[WXLoggingEnabledKey] = @([rawPreferences[WXLoggingEnabledKey] boolValue]);
     }
-    if ([rawPreferences[WXDiagnosticsEnabledKey] isKindOfClass:[NSNumber class]]) {
-        normalizedPreferences[WXDiagnosticsEnabledKey] = @([rawPreferences[WXDiagnosticsEnabledKey] boolValue]);
-    }
 
     if ([rawPreferences[WXWeChatForwardKey] respondsToSelector:@selector(boolValue)]) {
         normalizedPreferences[WXWeChatForwardKey] = @([rawPreferences[WXWeChatForwardKey] boolValue]);
@@ -777,8 +771,3 @@ NSDictionary *WXPreferencesCopySnapshot(void) {
     return p ?: @{};
 }
 
-BOOL WXDiagnosticsEnabledNow(void) {
-    NSDictionary *p = WXPreferencesCopySnapshot();
-    id v = p[WXDiagnosticsEnabledKey];
-    return [v respondsToSelector:@selector(boolValue)] && [v boolValue];
-}
