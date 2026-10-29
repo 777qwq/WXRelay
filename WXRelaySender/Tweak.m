@@ -330,6 +330,59 @@ static NSString *WRParseReferAppMsg(NSString *xml) {
     }
 }
 
+// v1.0.9 探针：群 CContact 方法名普查（纯反射零调用，每群一次）——为群昵称锁定 8.0.78 真实可用接口
+static id WRFindContactObj(NSString *usr) {
+    @try {
+        Class CContactMgr = objc_getClass("CContactMgr");
+        Class MMServiceCenter = objc_getClass("MMServiceCenter");
+        if (!CContactMgr || !MMServiceCenter || !usr.length) return nil;
+        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
+        if (!mgr || ![mgr respondsToSelector:@selector(getContactList:contactType:)]) return nil;
+        id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
+        if (![list isKindOfClass:[NSArray class]]) return nil;
+        for (id c in list) {
+            if (![c respondsToSelector:@selector(m_nsUsrName)]) continue;
+            NSString *u = WRStr([c valueForKey:@"m_nsUsrName"]);
+            if ([u isEqualToString:usr]) return c;
+        }
+    } @catch (NSException *e) { }
+    return nil;
+}
+
+static NSMutableSet *WRProbedGroups = nil;
+static void WRProbeGroupMemberAPI(id groupContact, NSString *groupUsr) {
+    if (!groupContact) return;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ WRProbedGroups = [NSMutableSet set]; });
+    if ([WRProbedGroups containsObject:groupUsr]) return;
+    [WRProbedGroups addObject:groupUsr];
+    @try {
+        Class C = [groupContact class];
+        unsigned int n = 0;
+        Method *ms = class_copyMethodList(C, &n);
+        NSMutableString *inst = [NSMutableString string];
+        for (unsigned int i = 0; i < n; i++) {
+            NSString *sel = NSStringFromSelector(method_getName(ms[i]));
+            if ([sel rangeOfString:@"hatRoom"].location != NSNotFound || [sel rangeOfString:@"ember"].location != NSNotFound)
+                [inst appendFormat:@"%@ ", sel];
+        }
+        free(ms);
+        unsigned int cn = 0;
+        Method *cms = class_copyMethodList(object_getClass(C), &cn);
+        NSMutableString *cls = [NSMutableString string];
+        for (unsigned int i = 0; i < cn; i++) {
+            NSString *sel = NSStringFromSelector(method_getName(cms[i]));
+            if ([sel rangeOfString:@"hatRoom"].location != NSNotFound || [sel rangeOfString:@"ember"].location != NSNotFound)
+                [cls appendFormat:@"%@ ", sel];
+        }
+        free(cms);
+        wrLog([NSString stringWithFormat:@"probe3 %@\n  实例: %@\n  类: %@", groupUsr, inst, cls]);
+    } @catch (NSException *e) {
+        wrLog([NSString stringWithFormat:@"probe3 EXC: %@", e.name]);
+    }
+}
+
 static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
     if (WRAsyncOnAddMsgOrig) {
         // v1.0.7 防炸兜底：WxRelay 延迟挂载后位于 hook 链上游，下游 tweak（如 WxNotify）
@@ -373,6 +426,7 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         // v1.0.8 回退：getChatRoomMemberDisplayName: 在 8.0.78 上炸（1.0.5 起闪退的头号嫌疑，头文件系 8.0.54/55），
 // 群成员昵称改走纯安全路径——发言人 wxid 过通讯录扫（好友=备注/昵称，非好友=wxid），群 CContact 成员接口挂账待安全方案
 NSString *speaker = (isGroup && actualUsr.length) ? WRContactDisplayName(actualUsr) : nil;
+        if (isGroup) WRProbeGroupMemberAPI(WRFindContactObj(fromUsr), fromUsr); // v1.0.9 一次性普查
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
         NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
