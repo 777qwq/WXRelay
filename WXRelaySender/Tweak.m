@@ -486,6 +486,33 @@ static void WRInstallMsgSourceHook(void) {
 }
 
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
+// v1.1.1 兼容性探针：8.0.75 无 +[MMServiceCenter defaultCenter]（unrecognized selector 铁证，8.0.78 有），
+// 普查类方法+候选单例入口（零风险反射+@try 试调），结果决定 1.1.2 的兼容实装
+static void WRProbeServiceCenter(void) {
+    Class M = objc_getClass("MMServiceCenter");
+    if (!M) { wrLog(@"probe5: MMServiceCenter 类不存在"); return; }
+    unsigned int n = 0;
+    Method *ms = class_copyMethodList(object_getClass(M), &n);
+    NSMutableString *list = [NSMutableString string];
+    for (unsigned int i = 0; i < n; i++) [list appendFormat:@"%@ ", NSStringFromSelector(method_getName(ms[i]))];
+    free(ms);
+    wrLog([NSString stringWithFormat:@"probe5 MMServiceCenter 类方法(%u): %@", n, list]);
+    for (NSString *cand in @[@"defaultCenter", @"sharedInstance", @"sharedCenter", @"instance", @"getInstance", @"sharedInstanceService"]) {
+        SEL sel = NSSelectorFromString(cand);
+        if ([M respondsToSelector:sel]) {
+            @try {
+                id c = ((id(*)(id,SEL))objc_msgSend)(M, sel);
+                id svc = c ? ((id(*)(id,SEL,id))objc_msgSend)(c, @selector(getService:), objc_getClass("CMessageMgr")) : nil;
+                wrLog([NSString stringWithFormat:@"probe5 候选 %@ 可用 center=%@ CMessageMgr=%@", cand, c ? NSStringFromClass([c class]) : @"(nil)", svc ? @"拿到" : @"(nil)"]);
+            } @catch (NSException *e) {
+                wrLog([NSString stringWithFormat:@"probe5 候选 %@ EXC: %@ %@", cand, e.name, e.reason]);
+            }
+        } else {
+            wrLog([NSString stringWithFormat:@"probe5 候选 %@ 不存在", cand]);
+        }
+    }
+}
+
 __attribute__((constructor)) static void wxrelaySenderCtor(void) {
     @autoreleasepool {
         wrLog(@"WXRelaySender ctor");
@@ -497,6 +524,9 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
         });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
+        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            WRProbeServiceCenter(); // v1.1.1 兼容探针（1.1.2 移除）
         });
         WRWriteMsgSourceFlag();
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
