@@ -71,10 +71,15 @@ static void wrLog(NSString *msg) {
 
 static void WRNoteSentText(NSString *text);
 static volatile BOOL WRInSend = NO;
+// v1.1.7 就绪门：8.0.75 启动早期（3s）外部调 getService: 会在微信内部炸 unrecognized selector
+// （异常在展开期二次抛出转 terminate，@try 兜不住）——就绪前禁止一切微信私 API 调用。
+// 就绪信号 = B hook 收到首条消息（消息管线能跑 = 服务可用），事件驱动零轮询
+static volatile BOOL WRReady = NO;
 
 // v2.3.2 路A：备注/昵称 → wxid，**仅精准匹配**（不做包含/前缀）；解析失败返回 nil，绝不裸发
 static NSString *WRResolveTargetID(NSString *targetId) {
     @try {
+        if (!WRReady) return nil; // v1.1.7 就绪门
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return nil;
@@ -120,6 +125,7 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     if (WRInSend) return NO; // 防重入
     WRInSend = YES;
     @try {
+        if (!WRReady) { wrLog(@"send: not ready, keep task"); { WRInSend = NO; return NO; } } // v1.1.7 就绪门
         // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
         BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
             || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
@@ -171,6 +177,7 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
 
 static void WRFlushTasks(void) {
     @try {
+        if (!WRReady) { wrLog(@"flush: not ready, keep tasks"); return; } // v1.1.7 就绪门：任务文件原地保留
         NSString *taskDir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"wxrelay_tasks"];
         NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:taskDir error:nil];
         if (!files.count) return;
@@ -220,6 +227,7 @@ static NSString *WRStr(id v) {
 static NSString *WRContactDisplayName(NSString *wxid) {
     if (wxid.length == 0) return wxid;
     @try {
+        if (!WRReady) return wxid; // v1.1.7 就绪门
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return wxid;
@@ -391,7 +399,7 @@ static id WRFindContactObj(NSString *usr) {
     @try {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
-        if (!CContactMgr || !MMServiceCenter || !usr.length) return nil;
+        if (!CContactMgr || !MMServiceCenter || !usr.length || !WRReady) return nil; // v1.1.7 就绪门
         id center = WRServiceCenter(); // v1.1.6 自适应入口
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr || ![mgr respondsToSelector:@selector(getContactList:contactType:)]) return nil;
@@ -421,6 +429,13 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
         if (WRInSend) return; // 发送中：跳过本次回声/重入
         if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
+        // v1.1.7 就绪门置位：首条消息到达 = 微信消息管线就绪 → 惰性解析自身 wxid + 补发积压任务
+        if (!WRReady) {
+            WRReady = YES;
+            wrLog(@"B: first message -> ready, lazy resolve");
+            WRResolveSelfWxid();
+            WRFlushTasks();
+        }
         WRWriteMsgSourceFlag();
         // 收文本 + 引用消息（引用=msgType 49 的 appmsg XML，type 57 + refermsg 节点，CMessageWrap isReferMsgType 同源）；系统消息/媒体仍不收
         unsigned int msgType = 0;
@@ -664,9 +679,8 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
         // 配合 orig 处的 @try 兜住下游异常。窗口期(3s)内的消息漏转发，可接受
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRInstallMsgSourceHook();
-        });
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            WRResolveSelfWxid(); // 等微信联系人服务就绪
+            // v1.1.7：启动期 getService:(CContactMgr) 会在 8.0.75 内部炸（unrecognized selector，
+            // 展开期二次抛出转 terminate，@try 兜不住）——WRResolveSelfWxid 改 B hook 首条消息时惰性调用
         });
         WRWriteMsgSourceFlag();
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, WRDiagDarwinCallback, CFSTR("cn.qwq.wxrelay.diag/run"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);

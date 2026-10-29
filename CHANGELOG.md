@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.7 - 2026-10-30
+
+### 修复
+
+- **微信 8.0.75 启动闪退**：ctor 3 秒块的 `WRResolveSelfWxid` 在微信服务管线就绪前调 `getService:(CContactMgr)`，微信内部抛 unrecognized selector（异常展开期二次抛出转 terminate，@try 兜不住）→ 启动约 4 秒必闪退
+- 改事件驱动：就绪信号 = B hook 收到首条消息（消息管线能跑 = 服务可用），就绪前禁止一切微信私 API 调用（getService: / getLocalUsrName: / 通讯录扫描全加就绪门）
+- 自身 wxid 改首条消息时惰性解析；15 秒补发在未就绪时任务文件原地保留，就绪后自动补发（零轮询）
+- WxNotify 与本闪退无关（卸载 A/B 实证 + 栈帧陪绑解读），可正常共存
+
 ## 1.1 - 2026-10-29
 
 ### 定版
