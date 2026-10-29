@@ -16,6 +16,29 @@
 #import <sys/sysctl.h>
 #import "../Shared/WXPreferences.h"
 
+// v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
+// MMContextManager.defaultManager → 当前 MMContext 的 m_serviceCenter（诊断实证 8.0.75 类方法全空）
+static id WRServiceCenter(void) {
+    Class M = objc_getClass("MMServiceCenter");
+    if (M && [M respondsToSelector:@selector(defaultCenter)]) {
+        return ((id(*)(id,SEL))objc_msgSend)(M, @selector(defaultCenter));
+    }
+    Class MMCM = objc_getClass("MMContextManager");
+    if (MMCM && [MMCM respondsToSelector:@selector(defaultManager)]) {
+        @try {
+            id mgr = ((id(*)(id,SEL))objc_msgSend)(MMCM, @selector(defaultManager));
+            NSArray *ctxs = mgr ? [mgr valueForKey:@"m_contexts"] : nil;
+            id ctx = (ctxs.count > 0) ? ctxs[0] : nil;
+            if (ctx) {
+                SEL scSel = NSSelectorFromString(@"serviceCenter");
+                id sc = [ctx respondsToSelector:scSel] ? ((id(*)(id,SEL))objc_msgSend)(ctx, scSel) : [ctx valueForKey:@"m_serviceCenter"];
+                if (sc) return sc;
+            }
+        } @catch (NSException *e) { }
+    }
+    return nil;
+}
+
 static void wrLog(NSString *msg) {
     @try {
         static NSDateFormatter *f = nil;
@@ -55,7 +78,7 @@ static NSString *WRResolveTargetID(NSString *targetId) {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return nil;
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id center = WRServiceCenter(); // v1.1.6 自适应入口
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr) return nil;
         // 8.0.50 实证：getContactByDisplayName 不存在，直接走列表精准扫描
@@ -111,7 +134,7 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
             wrLog(@"send: private class missing");
             { WRInSend = NO; return NO; }
         }
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id center = WRServiceCenter(); // v1.1.6 自适应入口
         id fromUsr = ((id(*)(id,SEL,long long))objc_msgSend)(SettingUtil, @selector(getLocalUsrName:), 0);
         if (!center || !fromUsr) { wrLog(@"send: center/self missing"); { WRInSend = NO; return NO; } }
         if (![center respondsToSelector:@selector(getService:)]) { wrLog(@"send: no getService"); { WRInSend = NO; return NO; } }
@@ -200,7 +223,7 @@ static NSString *WRContactDisplayName(NSString *wxid) {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return wxid;
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id center = WRServiceCenter(); // v1.1.6 自适应入口
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return wxid;
         // 按表精准扫：先备注后昵称（与路径A同名语义）
@@ -228,7 +251,7 @@ static void WRResolveSelfWxid(void) {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return;
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id center = WRServiceCenter(); // v1.1.6 自适应入口
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return;
         id me = ((id(*)(id,SEL))objc_msgSend)(mgr, @selector(getSelfContact));
@@ -369,7 +392,7 @@ static id WRFindContactObj(NSString *usr) {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter || !usr.length) return nil;
-        id center = ((id(*)(id,SEL))objc_msgSend)(MMServiceCenter, @selector(defaultCenter));
+        id center = WRServiceCenter(); // v1.1.6 自适应入口
         id mgr = center ? ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr) : nil;
         if (!mgr || ![mgr respondsToSelector:@selector(getContactList:contactType:)]) return nil;
         id list = ((id(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u);
@@ -539,6 +562,26 @@ static void WRDiagRun(void) {
                 }
             }
             [r appendFormat:@"  可用入口: %@\n", found ?: @"(无——send/通讯录链路不可用)"];
+            // v1.1.6 补探：MMContextManager 路径（8.0.5x~7x 的真实入口）
+            Class MMCM = objc_getClass("MMContextManager");
+            [r appendFormat:@"  MMContextManager defaultManager: %@\n", (MMCM && [MMCM respondsToSelector:@selector(defaultManager)]) ? @"存在" : @"无"];
+            if (MMCM && [MMCM respondsToSelector:@selector(defaultManager)]) {
+                @try {
+                    id dm = ((id(*)(id,SEL))objc_msgSend)(MMCM, @selector(defaultManager));
+                    NSArray *ctxs = dm ? [dm valueForKey:@"m_contexts"] : nil;
+                    id ctx = (ctxs.count > 0) ? ctxs[0] : nil;
+                    if (ctx) {
+                        SEL scSel = NSSelectorFromString(@"serviceCenter");
+                        id sc = [ctx respondsToSelector:scSel] ? ((id(*)(id,SEL))objc_msgSend)(ctx, scSel) : nil;
+                        id cmgr = sc ? ((id(*)(id,SEL,id))objc_msgSend)(sc, @selector(getService:), objc_getClass("CMessageMgr")) : nil;
+                        [r appendFormat:@"  MMContext 路径: contexts=%lu serviceCenter=%@ CMessageMgr=%@\n", (unsigned long)ctxs.count, sc ? @"拿到" : @"nil", cmgr ? @"拿到" : @"nil"];
+                    } else {
+                        [r appendFormat:@"  MMContext 路径: contexts=%@\n", ctxs ? @"(空)" : @"nil"];
+                    }
+                } @catch (NSException *e) {
+                    [r appendFormat:@"  MMContext 路径 EXC: %@\n", e.name];
+                }
+            }
         }
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
