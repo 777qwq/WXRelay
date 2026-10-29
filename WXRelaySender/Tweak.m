@@ -18,7 +18,8 @@
 
 static void wrLog(NSString *msg);
 static void WRResolveSelfWxid(void);   // v1.1.11 前置声明（WRSendMessage 在定义前调用）
-static NSString *WRSelfWxid = nil;
+static void WRDiagIfEnabled(void);     // v1.1.11 前置声明（B hook 在定义前调用）
+static NSString *WRSelfWxid;           // v1.1.12：纯 tentative（不带初始化），正式定义在 resolve 段
 // v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
 // MMContextManager.defaultManager → 当前 MMContext（v1.1.9：ctx 自带 getService:，直接用）
 static id WRServiceCenter(void) {
@@ -691,7 +692,7 @@ static void WRDiagDarwinCallback(CFNotificationCenterRef __unused c, void *obser
 // v1.1.11：诊断开关开启时，就绪后自动跑一次
 static void WRDiagIfEnabled(void) {
     @try {
-        if ([[WXPreferences loadPreferences] objectForKey:WXDiagLogEnabledKey] boolValue) {
+        if ([[[WXPreferences loadPreferences] objectForKey:WXDiagLogEnabledKey] boolValue]) {
             dispatch_async(dispatch_get_main_queue(), ^{ WRDiagRun(); });
         }
     } @catch (NSException *e) { }
