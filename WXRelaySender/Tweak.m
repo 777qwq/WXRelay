@@ -16,8 +16,9 @@
 #import <sys/sysctl.h>
 #import "../Shared/WXPreferences.h"
 
+static void wrLog(NSString *msg);
 // v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
-// MMContextManager.defaultManager → 当前 MMContext 的 m_serviceCenter（诊断实证 8.0.75 类方法全空）
+// MMContextManager.defaultManager → 当前 MMContext（v1.1.9：ctx 自带 getService:，直接用）
 static id WRServiceCenter(void) {
     Class M = objc_getClass("MMServiceCenter");
     if (M && [M respondsToSelector:@selector(defaultCenter)]) {
@@ -30,11 +31,19 @@ static id WRServiceCenter(void) {
             NSArray *ctxs = mgr ? [mgr valueForKey:@"m_contexts"] : nil;
             id ctx = (ctxs.count > 0) ? ctxs[0] : nil;
             if (ctx) {
+                // v1.1.9 修正：8.0.5x~7x 的正确入口是 **-[MMContext getService:]**（ctx 自带），
+                // 不是内层 m_serviceCenter 的 getService:——1.1.6 挖错对象导致微信内部炸
+                if ([ctx respondsToSelector:@selector(getService:)]) {
+                    wrLog([NSString stringWithFormat:@"svc: use MMContext(%@) directly", NSStringFromClass([ctx class])]);
+                    return ctx;
+                }
                 SEL scSel = NSSelectorFromString(@"serviceCenter");
                 id sc = [ctx respondsToSelector:scSel] ? ((id(*)(id,SEL))objc_msgSend)(ctx, scSel) : [ctx valueForKey:@"m_serviceCenter"];
+                wrLog([NSString stringWithFormat:@"svc: ctx no getService:, fallback sc=%@ class=%@",
+                      sc ? @"非nil" : @"nil", sc ? NSStringFromClass([sc class]) : @"-"]);
                 if (sc) return sc;
             }
-        } @catch (NSException *e) { }
+        } @catch (NSException *e) { wrLog([NSString stringWithFormat:@"svc EXC: %@", e.name]); }
     }
     return nil;
 }
@@ -261,13 +270,13 @@ static void WRResolveSelfWxid(void) {
         Class CContactMgr = objc_getClass("CContactMgr");
         Class MMServiceCenter = objc_getClass("MMServiceCenter");
         if (!CContactMgr || !MMServiceCenter) return;
-        id center = WRServiceCenter(); // v1.1.6 自适应入口
-        // v1.1.8 诊断打点：8.0.75 上首条消息后调 getService: 仍闪退——查 center 真实身份
-        wrLog([NSString stringWithFormat:@"resolve: center=%@ class=%@ isMMSC=%d",
+        id center = WRServiceCenter(); // v1.1.9：优先 MMContext 本体
+        // v1.1.9 门禁泛化：center 是 MMContext 本体或内层 serviceCenter，只要响应 getService: 就放行
+        wrLog([NSString stringWithFormat:@"resolve: center=%@ class=%@ hasGetService=%d",
               center ? @"非nil" : @"nil",
               center ? NSStringFromClass([center class]) : @"-",
-              center ? [center isKindOfClass:MMServiceCenter] : -1]);
-        if (!center || ![center isKindOfClass:MMServiceCenter]) { wrLog(@"resolve: center not MMServiceCenter, abort"); return; }
+              center ? [center respondsToSelector:@selector(getService:)] : -1]);
+        if (!center || ![center respondsToSelector:@selector(getService:)]) { wrLog(@"resolve: center no getService:, abort"); return; }
         id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
         wrLog([NSString stringWithFormat:@"resolve: mgr=%@ class=%@", mgr ? @"非nil" : @"nil", mgr ? NSStringFromClass([mgr class]) : @"-"]);
         if (!mgr || ![mgr respondsToSelector:@selector(getSelfContact)]) return;
