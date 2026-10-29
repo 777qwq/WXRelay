@@ -67,7 +67,8 @@ extern NSString * const WXMatchModeContains;
 extern NSString * const WXMatchModeRegex;
 extern NSString * const WXMatchModeWhitelistDefault;
 
-NSString *WXDiagResultFilePath(void);
+void WXDiagnosticsSaveResult(NSString *text);
+NSString *WXDiagnosticsLoadResult(void);
 NSDictionary *WXPreferencesCopySnapshot(void);
 BOOL WXDiagnosticsEnabledNow(void);
 

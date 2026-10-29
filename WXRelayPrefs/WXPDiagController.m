@@ -57,7 +57,7 @@ static void WXPDiagDoneCallback(CFNotificationCenterRef __unused c, void __unuse
 }
 
 - (void)reloadResult {
-    NSString *text = [NSString stringWithContentsOfFile:WXDiagResultFilePath() encoding:NSUTF8StringEncoding error:nil];
+    NSString *text = WXDiagnosticsLoadResult();
     _textView.text = (text.length > 0) ? text : WXPLocalizedString(@"DIAG_EMPTY");
 }
 

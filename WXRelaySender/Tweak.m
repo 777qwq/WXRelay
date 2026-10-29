@@ -600,8 +600,8 @@ static void WRDiagRun(void) {
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
     [r appendString:@"===== 诊断结束 =====\n"];
-    [r writeToFile:WXDiagResultFilePath() atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    wrLog(@"diag: 诊断完成，结果已写入");
+    WXDiagnosticsSaveResult(r);
+    wrLog(@"diag: 诊断完成，结果已写入（CFPreferences 域）");
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/done"), NULL, NULL, YES);
 }
 

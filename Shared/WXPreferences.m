@@ -754,8 +754,18 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
 
 @end
 
-NSString *WXDiagResultFilePath(void) {
-    return jbroot(@"/var/mobile/Library/Preferences/cn.qwq.wxrelay.diag.txt");
+// v1.1.3：诊断结果走 CFPreferences（配置通道在 roothide 被实证可用，绕开 jbroot 文件路径玄学）
+static NSString * const WXDiagResultKey = @"DiagResult";
+
+void WXDiagnosticsSaveResult(NSString *text) {
+    if (!text) text = @"";
+    CFPreferencesSetAppValue((CFStringRef)WXDiagResultKey, (__bridge CFTypeRef)text, (CFStringRef)WXPreferencesIdentifier);
+    CFPreferencesAppSynchronize((CFStringRef)WXPreferencesIdentifier);
+}
+
+NSString *WXDiagnosticsLoadResult(void) {
+    id v = CFBridgingRelease(CFPreferencesCopyAppValue((CFStringRef)WXDiagResultKey, (CFStringRef)WXPreferencesIdentifier));
+    return [v isKindOfClass:[NSString class]] ? v : @"";
 }
 
 // v1.1.2：供 Prefs 进程读取 prefs 快照与诊断开关（双路径，roothide/rootless 通吃）
