@@ -4,7 +4,7 @@ TARGET = iphone:clang:latest:15.0
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = WXRelaySender
-WXRelaySender_FILES = Tweak.m
+WXRelaySender_FILES = Tweak.m ../Shared/WXPreferences.m
 WXRelaySender_FRAMEWORKS = UIKit Foundation AVFoundation CoreFoundation
 
 include $(THEOS_MAKE_PATH)/tweak.mk

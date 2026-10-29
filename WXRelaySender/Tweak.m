@@ -13,6 +13,8 @@
 #import <objc/message.h>
 #import <objc/runtime.h>
 #import <pthread.h>
+#import <sys/sysctl.h>
+#import "../Shared/WXPreferences.h"
 
 static void wrLog(NSString *msg) {
     @try {
@@ -486,31 +488,127 @@ static void WRInstallMsgSourceHook(void) {
 }
 
 // ===== v2.3.5 探针（一次性，验证解析链后删除）=====
-// v1.1.1 兼容性探针：8.0.75 无 +[MMServiceCenter defaultCenter]（unrecognized selector 铁证，8.0.78 有），
-// 普查类方法+候选单例入口（零风险反射+@try 试调），结果决定 1.1.2 的兼容实装
-static void WRProbeServiceCenter(void) {
-    Class M = objc_getClass("MMServiceCenter");
-    if (!M) { wrLog(@"probe5: MMServiceCenter 类不存在"); return; }
+// ============ v1.1.2 诊断模块：五路信息收集，结果写公共文件供 Prefs 读取复制 ============
+static NSString *WRDiagClassMethods(Class C, NSString *needle1, NSString *needle2) {
+    if (!C) return @"(类不存在)";
     unsigned int n = 0;
-    Method *ms = class_copyMethodList(object_getClass(M), &n);
-    NSMutableString *list = [NSMutableString string];
-    for (unsigned int i = 0; i < n; i++) [list appendFormat:@"%@ ", NSStringFromSelector(method_getName(ms[i]))];
-    free(ms);
-    wrLog([NSString stringWithFormat:@"probe5 MMServiceCenter 类方法(%u): %@", n, list]);
-    for (NSString *cand in @[@"defaultCenter", @"sharedInstance", @"sharedCenter", @"instance", @"getInstance", @"sharedInstanceService"]) {
-        SEL sel = NSSelectorFromString(cand);
-        if ([M respondsToSelector:sel]) {
-            @try {
-                id c = ((id(*)(id,SEL))objc_msgSend)(M, sel);
-                id svc = c ? ((id(*)(id,SEL,id))objc_msgSend)(c, @selector(getService:), objc_getClass("CMessageMgr")) : nil;
-                wrLog([NSString stringWithFormat:@"probe5 候选 %@ 可用 center=%@ CMessageMgr=%@", cand, c ? NSStringFromClass([c class]) : @"(nil)", svc ? @"拿到" : @"(nil)"]);
-            } @catch (NSException *e) {
-                wrLog([NSString stringWithFormat:@"probe5 候选 %@ EXC: %@ %@", cand, e.name, e.reason]);
-            }
-        } else {
-            wrLog([NSString stringWithFormat:@"probe5 候选 %@ 不存在", cand]);
-        }
+    Method *ms = class_copyMethodList(C, &n);
+    NSMutableString *out = [NSMutableString string];
+    for (unsigned int i = 0; i < n; i++) {
+        NSString *sel = NSStringFromSelector(method_getName(ms[i]));
+        if ((needle1 && [sel rangeOfString:needle1].location != NSNotFound)
+            || (needle2 && [sel rangeOfString:needle2].location != NSNotFound)
+            || (!needle1 && !needle2))
+            [out appendFormat:@"%@ ", sel];
     }
+    free(ms);
+    return out.length ? out : @"(无匹配)";
+}
+
+static void WRDiagRun(void) {
+    NSMutableString *r = [NSMutableString string];
+    static NSDateFormatter *df = nil;
+    static dispatch_once_t dfOnce;
+    dispatch_once(&dfOnce, ^{ df = [NSDateFormatter new]; df.dateFormat = @"yyyy-MM-dd HH:mm:ss"; });
+    [r appendFormat:@"===== WxRelay 诊断 %@ =====\n", [df stringFromDate:[NSDate date]]];
+    [r appendFormat:@"微信版本: %@\n", [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"?"];
+    char mach[128] = {0}; size_t sz = sizeof(mach);
+    sysctlbyname("hw.machine", mach, &sz, NULL, 0);
+    [r appendFormat:@"设备: %s\n", mach];
+
+    @try {
+        [r appendString:@"\n[1] 服务入口\n"];
+        Class M = objc_getClass("MMServiceCenter");
+        if (!M) { [r appendString:@"  MMServiceCenter 类不存在\n"]; }
+        else {
+            [r appendFormat:@"  类方法(全): %@\n", WRDiagClassMethods(object_getClass(M), nil, nil)];
+            NSString *found = nil;
+            for (NSString *cand in @[@"defaultCenter", @"sharedInstance", @"sharedCenter", @"instance", @"getInstance"]) {
+                SEL sel = NSSelectorFromString(cand);
+                BOOL ok = [M respondsToSelector:sel];
+                [r appendFormat:@"  候选 +[MMServiceCenter %@]: %@\n", cand, ok ? @"存在" : @"无"];
+                if (ok && !found) {
+                    @try {
+                        id c = ((id(*)(id,SEL))objc_msgSend)(M, sel);
+                        id mgr = c ? ((id(*)(id,SEL,id))objc_msgSend)(c, @selector(getService:), objc_getClass("CMessageMgr")) : nil;
+                        [r appendFormat:@"    -> center=%@ CMessageMgr=%@\n", c ? @"拿到" : @"nil", mgr ? @"拿到" : @"nil"];
+                        if (c && mgr) found = cand;
+                    } @catch (NSException *e) {
+                        [r appendFormat:@"    -> EXC: %@\n", e.name];
+                    }
+                }
+            }
+            [r appendFormat:@"  可用入口: %@\n", found ?: @"(无——send/通讯录链路不可用)"];
+        }
+    } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
+
+    @try {
+        [r appendString:@"\n[2] 消息捕获\n"];
+        Class CMessageMgr = objc_getClass("CMessageMgr");
+        [r appendFormat:@"  CMessageMgr AddMsg 系: %@\n", WRDiagClassMethods(CMessageMgr, @"AddMsg", @"NewMsg")];
+        [r appendFormat:@"  hook 挂载: %@\n", WRHookedSelectorName ?: @"(未挂载)"];
+    } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
+
+    @try {
+        [r appendString:@"\n[3] CMessageWrap 字段\n"];
+        Class W = objc_getClass("CMessageWrap");
+        for (NSString *f in @[@"m_uiMessageType", @"m_nsContent", @"m_nsFromUsr", @"m_nsToUsr", @"m_nsRealChatUsr", @"m_nsActualUsr", @"m_nsMsgId", @"m_bIsSender", @"m_uiCreateTime"]) {
+            [r appendFormat:@"  %@: %@\n", f, [W instancesRespondToSelector:NSSelectorFromString(f)] ? @"有" : @"无"];
+        }
+    } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
+
+    @try {
+        [r appendString:@"\n[4] 通讯录与群数据\n"];
+        Class CContactMgr = objc_getClass("CContactMgr");
+        Class MMSC = objc_getClass("MMServiceCenter");
+        id center = nil;
+        for (NSString *cand in @[@"defaultCenter", @"sharedInstance", @"sharedCenter"]) {
+            SEL sel = NSSelectorFromString(cand);
+            if ([MMSC respondsToSelector:sel]) { center = ((id(*)(id,SEL))objc_msgSend)(MMSC, sel); break; }
+        }
+        if (!center) { [r appendString:@"  服务中心不可用，跳过\n"]; }
+        else {
+            id mgr = ((id(*)(id,SEL,id))objc_msgSend)(center, @selector(getService:), CContactMgr);
+            NSArray *list = [mgr respondsToSelector:@selector(getContactList:contactType:)] ? ((NSArray *(*)(id,SEL,unsigned int,unsigned int))objc_msgSend)(mgr, @selector(getContactList:contactType:), 0xFFFFFFFFu, 0u) : nil;
+            [r appendFormat:@"  getContactList: %@ 条目=%lu\n", list ? @"可用" : @"不可用", (unsigned long)list.count];
+            if (list) {
+                unsigned int groups = 0, dumped = 0;
+                for (id c2 in list) {
+                    if (![c2 respondsToSelector:@selector(m_nsUsrName)]) continue;
+                    NSString *u = WRStr([c2 valueForKey:@"m_nsUsrName"]);
+                    if (![u hasSuffix:@"@chatroom"]) continue;
+                    groups++;
+                    if (dumped < 3) {
+                        dumped++;
+                        NSString *xml = WRStr([c2 valueForKey:@"m_nsChatRoomData"]) ?: @"";
+                        [r appendFormat:@"  群 %@ 成员数据: len=%lu 前200: %@\n", u, (unsigned long)xml.length, [xml substringToIndex:MIN(200, xml.length)]];
+                    }
+                }
+                [r appendFormat:@"  群总数: %u（前 3 个已采样）\n", groups];
+            }
+        }
+    } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
+
+    @try {
+        [r appendString:@"\n[5] 直发链\n"];
+        Class SU = objc_getClass("SettingUtil");
+        [r appendFormat:@"  SettingUtil: %@\n", SU ? @"有" : @"无"];
+        [r appendFormat:@"  getLocalUsrName:: %@\n", SU && [SU instancesRespondToSelector:@selector(getLocalUsrName:)] ? @"有" : @"无"];
+        Class CM = objc_getClass("CMessageMgr");
+        [r appendFormat:@"  AddMsg:MsgWrap:: %@\n", CM && [CM instancesRespondToSelector:@selector(AddMsg:MsgWrap:)] ? @"有" : @"无"];
+        [r appendString:@"  (诊断不真发消息)\n"];
+    } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
+
+    [r appendString:@"===== 诊断结束 =====\n"];
+    [r writeToFile:WXDiagResultFilePath() atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    wrLog(@"diag: 诊断完成，结果已写入");
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("cn.qwq.wxrelay.diag/done"), NULL, NULL, YES);
+}
+
+static void WRDiagDarwinCallback(CFNotificationCenterRef __unused c, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        WRDiagRun();
+    });
 }
 
 __attribute__((constructor)) static void wxrelaySenderCtor(void) {
@@ -525,10 +623,8 @@ __attribute__((constructor)) static void wxrelaySenderCtor(void) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             WRResolveSelfWxid(); // 等微信联系人服务就绪
         });
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            WRProbeServiceCenter(); // v1.1.1 兼容探针（1.1.2 移除）
-        });
         WRWriteMsgSourceFlag();
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, WRDiagDarwinCallback, CFSTR("cn.qwq.wxrelay.diag/run"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL,
             WRTaskNotifyCallback, (__bridge CFStringRef)@"com.mos.wxrelay.task", NULL,
             CFNotificationSuspensionBehaviorDeliverImmediately);

@@ -27,6 +27,7 @@ NSString * const WXGlobalRegexKey = @"GlobalRegex";
 NSString * const WXAppRulesKey = @"AppRules";
 NSString * const WXDeleteFilteredNotificationsKey = @"DeleteFilteredNotifications";
 NSString * const WXLoggingEnabledKey = @"LoggingEnabled";
+NSString * const WXDiagnosticsEnabledKey = @"DiagnosticsEnabled";
 NSString * const WXLoggingDisabledBundleIdentifiersKey = @"LoggingDisabledBundleIdentifiers";
 NSString * const WXLogEntryLimitKey = @"LogEntryLimit";
 NSString * const WXPrefOnlyConfiguredAppsKey = @"PrefOnlyConfiguredApps";
@@ -180,6 +181,7 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
         WXAppRulesKey,
         WXDeleteFilteredNotificationsKey,
         WXLoggingEnabledKey,
+        WXDiagnosticsEnabledKey,
         WXLoggingDisabledBundleIdentifiersKey,
         WXLogEntryLimitKey,
         WXPrefOnlyConfiguredAppsKey,
@@ -200,6 +202,7 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
         WXAppRulesKey: @{},
         WXDeleteFilteredNotificationsKey: @NO,
         WXLoggingEnabledKey: @NO,
+        WXDiagnosticsEnabledKey: @NO,
         WXLoggingDisabledBundleIdentifiersKey: @[],
         WXLogEntryLimitKey: @([self defaultLogEntryLimit]),
         WXPrefOnlyConfiguredAppsKey: @NO,
@@ -664,6 +667,9 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
     if ([rawPreferences[WXLoggingEnabledKey] isKindOfClass:[NSNumber class]]) {
         normalizedPreferences[WXLoggingEnabledKey] = @([rawPreferences[WXLoggingEnabledKey] boolValue]);
     }
+    if ([rawPreferences[WXDiagnosticsEnabledKey] isKindOfClass:[NSNumber class]]) {
+        normalizedPreferences[WXDiagnosticsEnabledKey] = @([rawPreferences[WXDiagnosticsEnabledKey] boolValue]);
+    }
 
     if ([rawPreferences[WXWeChatForwardKey] respondsToSelector:@selector(boolValue)]) {
         normalizedPreferences[WXWeChatForwardKey] = @([rawPreferences[WXWeChatForwardKey] boolValue]);
@@ -747,3 +753,22 @@ static NSString *WXPreparePrimaryPreferencesFilePath(void) {
 }
 
 @end
+
+NSString *WXDiagResultFilePath(void) {
+    return jbroot(@"/var/mobile/Library/Preferences/cn.qwq.wxrelay.diag.txt");
+}
+
+// v1.1.2：供 Prefs 进程读取 prefs 快照与诊断开关（双路径，roothide/rootless 通吃）
+NSDictionary *WXPreferencesCopySnapshot(void) {
+    NSString *plistName = [WXPreferencesIdentifier stringByAppendingString:@".plist"];
+    NSDictionary *p = [NSDictionary dictionaryWithContentsOfFile:WXPreferencesPrimaryFilePath()];
+    if (!p) p = [NSDictionary dictionaryWithContentsOfFile:WXPreferencesLegacyFilePath()];
+    if (!p) p = [NSDictionary dictionaryWithContentsOfFile:[@"/var/jb/Library/Preferences/" stringByAppendingString:plistName]];
+    return p ?: @{};
+}
+
+BOOL WXDiagnosticsEnabledNow(void) {
+    NSDictionary *p = WXPreferencesCopySnapshot();
+    id v = p[WXDiagnosticsEnabledKey];
+    return [v respondsToSelector:@selector(boolValue)] && [v boolValue];
+}

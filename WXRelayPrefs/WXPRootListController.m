@@ -6,6 +6,7 @@
 #import "WXPRulesListEditorController.h"
 #import "WXPWeChatTargetEditorController.h"
 #import "WXPLogsListController.h"
+#import "WXPDiagController.h"
 
 @interface WXPRootListController () <UITextViewDelegate>
 @end
@@ -27,6 +28,7 @@ static void WXPRestoreStackIfPopped(void) {
 
 static NSString * const WXPRulesGroupSpecifierID = @"ROOT_RULES_GROUP";
 static NSString * const WXPFilteredLogsSpecifierID = @"ROOT_FILTERED_LOGS";
+static NSString * const WXPDiagResultSpecifierID = @"WXP_DIAG_RESULT";
 static NSString * const WXPWeChatTargetsSpecifierID = @"ROOT_WECHAT_TARGETS";
 static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WXRelay";
 
@@ -245,6 +247,26 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
                                                action:@selector(openLogs:)
                                            identifier:WXPFilteredLogsSpecifierID]];
 
+    // v1.1.2 诊断区块：独立开关（不受全局开关控制），默认关
+    PSSpecifier *diagGroup = [PSSpecifier emptyGroupSpecifier];
+    [diagGroup setProperty:WXPLocalizedString(@"DIAG_SECTION_FOOTER") forKey:PSFooterTextGroupKey];
+    [specifiers addObject:diagGroup];
+
+    PSSpecifier *diagEnabledSpecifier = [PSSpecifier preferenceSpecifierNamed:WXPLocalizedString(@"DIAG_ENABLED")
+                                                                      target:self
+                                                                         set:@selector(setPreferenceValue:specifier:)
+                                                                         get:@selector(readPreferenceValue:)
+                                                                      detail:nil
+                                                                        cell:PSSwitchCell
+                                                                        edit:nil];
+    [diagEnabledSpecifier setProperty:WXDiagnosticsEnabledKey forKey:PSKeyNameKey];
+    [diagEnabledSpecifier setProperty:@NO forKey:PSDefaultValueKey];
+    [specifiers addObject:diagEnabledSpecifier];
+
+    [specifiers addObject:[self linkSpecifierWithName:WXPLocalizedString(@"DIAG_RESULT")
+                                               action:@selector(openDiag:)
+                                           identifier:WXPDiagResultSpecifierID]];
+
     _specifiers = [specifiers copy];
     return _specifiers;
 }
@@ -365,6 +387,11 @@ static NSString * const WXPProjectPageURLString = @"https://github.com/777qwq/WX
 
 - (void)openLogs:(PSSpecifier *)specifier {
     WXPLogsListController *controller = [[WXPLogsListController alloc] initWithStyle:UITableViewStyleInsetGrouped];
+    [self.navigationController pushViewController:controller animated:YES];
+}
+
+- (void)openDiag:(PSSpecifier *)specifier {
+    WXPDiagController *controller = [[WXPDiagController alloc] initWithStyle:UITableViewStyleInsetGrouped];
     [self.navigationController pushViewController:controller animated:YES];
 }
 

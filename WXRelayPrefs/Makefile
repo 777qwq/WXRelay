@@ -18,6 +18,7 @@ WXRelayPrefs_FILES = \
 	WXPNotificationHistoryClient.m \
 	WXPAppRulesExportPickerController.m \
 	WXPLogsListController.m \
+	WXPDiagController.m \
 	WXPLogDetailController.m \
 	../Shared/WXPreferences.m \
 	../Shared/WXLogStore.m \

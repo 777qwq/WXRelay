@@ -307,3 +307,13 @@
 
 "RULE_TEXT_REPLY_ONLY_LABEL" = "回复文本";
 "RULE_TEXT_REPLY_ONLY_PLACEHOLDER" = "留空=纯转发；填了=只发这条";
+
+"DIAG_TITLE" = "诊断结果";
+"DIAG_ENABLED" = "诊断模式";
+"DIAG_RESULT" = "诊断结果";
+"DIAG_RUN" = "运行诊断";
+"DIAG_COPY" = "复制";
+"DIAG_EMPTY" = "尚未运行诊断。\n\n开启上方开关后点右上角「运行诊断」，完成后此处显示结果，可点「复制」导出。";
+"DIAG_RUNNING" = "诊断运行中，请稍候…";
+"DIAG_NEED_ENABLE" = "请先开启「诊断模式」开关。";
+"DIAG_SECTION_FOOTER" = "诊断独立于转发全局开关，默认关闭。开启后点「诊断结果 → 运行诊断」，收集微信接口信息（服务入口、消息字段、群数据、直发链路），结果仅存本机，用于适配排查；诊断不发送任何消息。";
