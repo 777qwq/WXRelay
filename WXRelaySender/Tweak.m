@@ -447,14 +447,12 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
             wrLog([NSString stringWithFormat:@"B: 下游hook异常已拦截: %@ %@", e.name, e.reason]);
         }
     }
-    // v1.2.4 钩子只当邮差：微信消息线程（提示音决策点所在）上只做就绪翻转与字段快照，
-    // 重活（就绪初始化/补发/诊断/通讯录扫描/规则匹配/落盘）整体进后台串行队列。
-    // 否则 hook 内同步重活会堵住微信自己的 app 内提示音管线（微信内无声的根因）。
+    // v1.2.6 二分诊断：hook 体只留 orig 放行——快照/队列/spool/就绪门全部摘除，
+    // 用于判定"微信内无声"是 hook 存在本身还是摘除段里某段逻辑。测完恢复。
     @try {
-        if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
-        if (WRInSend) return; // 发送中：跳过本次回声/重入
-        if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
-        if (!WRReady) { WRReady = YES; wrLog(@"B: first message -> ready (work deferred to queue)"); }
+        if (!WRReady) { WRReady = YES; }
+        wrLog(@"B passthrough: orig only");
+        return;
         // 字段快照：廉价 KVC 读，wrap 归还微信后异步块不再触碰
         unsigned int msgType = 0;
         if ([wrap respondsToSelector:@selector(m_uiMessageType)]) msgType = ((unsigned int(*)(id,SEL))objc_msgSend)(wrap, @selector(m_uiMessageType));
