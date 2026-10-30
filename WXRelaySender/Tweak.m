@@ -21,6 +21,8 @@ static void WRResolveSelfWxid(void);   // v1.1.11 前置声明（WRSendMessage �
 static void WRDiagIfEnabled(void);     // v1.1.11 前置声明（B hook 在定义前调用）
 static void WRProcessIncoming(unsigned int msgType, NSString *content, NSString *fromUsr, NSString *actualUsr, BOOL isSender, NSString *msgID); // v1.2.4 前置声明（hook 在定义前调用）
 static dispatch_queue_t WRMsgQueue(void); // v1.2.5 前置声明（hook 在定义前调用）
+static BOOL WRSendMessage(NSString *targetId, NSString *text);
+static BOOL WRDelaySend(NSString *targetId, NSString *text);
 static NSString *WRSelfWxid;           // v1.1.12：纯 tentative（不带初始化），正式定义在 resolve 段
 // v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
 // MMContextManager.defaultManager → 当前 MMContext（v1.1.9：ctx 自带 getService:，直接用）
@@ -133,6 +135,17 @@ static NSString *WRResolveTargetID(NSString *targetId) {
     } @catch (NSException *e) { return nil; }
 }
 
+// v1.2.9 延迟发送：把 AddMsg 与消息接收在时间轴上拉开，避免压制微信 app 内提示音
+static BOOL WRDelaySend(NSString *targetId, NSString *text) {
+    if (WRInSend) return NO;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            WRSendMessage(targetId, text);
+        });
+    });
+    return YES; // 已受理（异步），调用方不重试
+}
+
 // v2.3.0 直发：进程内私 API，走微信原生发送管线（CMessageMgr AddMsg），不再依赖懒猫 handleOpenURL
 // 参考：DKWechatHelper sendMsg（8.x 实战）+ iWeChat dump 头；真机签名待验证
 static BOOL WRSendMessage(NSString *targetId, NSString *text) {
@@ -140,8 +153,9 @@ static BOOL WRSendMessage(NSString *targetId, NSString *text) {
     WRInSend = YES;
     @try {
         if (!WRReady) { wrLog(@"send: not ready, keep task"); { WRInSend = NO; return NO; } } // v1.1.7 就绪门
-        // v1.2.7 二分第二刀：禁实际发送（测"发送杀声音"），保留其余全部管线
-        wrLog(@"send: v1.2.7 sends disabled, keep task"); { WRInSend = NO; return NO; }
+        // v1.2.9 发送延迟闸：实测 AddMsg 紧跟接收会压制微信 app 内提示音（1.2.8 A/B 实锤），
+        // 统一延迟 2s 发送——提示音先播，发送后行，两不相扰
+        { WRInSend = NO; return WRDelaySend(targetId, text); }
         // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
         BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
             || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
