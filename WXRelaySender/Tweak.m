@@ -136,26 +136,30 @@ static NSString *WRResolveTargetID(NSString *targetId) {
 }
 
 // v1.2.9 延迟发送：把 AddMsg 与消息接收在时间轴上拉开，避免压制微信 app 内提示音
+static BOOL WRSendMessageCore(NSString *targetId, NSString *text);
+
 static BOOL WRDelaySend(NSString *targetId, NSString *text) {
     if (WRInSend) return NO;
     dispatch_async(dispatch_get_main_queue(), ^{
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            WRSendMessage(targetId, text);
+            WRSendMessageCore(targetId, text);
         });
     });
     return YES; // 已受理（异步），调用方不重试
 }
 
+static BOOL WRSendMessage(NSString *targetId, NSString *text) {
+    return WRDelaySend(targetId, text); // v1.2.10 对外入口统一延迟
+}
+
 // v2.3.0 直发：进程内私 API，走微信原生发送管线（CMessageMgr AddMsg），不再依赖懒猫 handleOpenURL
 // 参考：DKWechatHelper sendMsg（8.x 实战）+ iWeChat dump 头；真机签名待验证
-static BOOL WRSendMessage(NSString *targetId, NSString *text) {
+static BOOL WRSendMessageCore(NSString *targetId, NSString *text) {
     if (WRInSend) return NO; // 防重入
     WRInSend = YES;
     @try {
         if (!WRReady) { wrLog(@"send: not ready, keep task"); { WRInSend = NO; return NO; } } // v1.1.7 就绪门
-        // v1.2.9 发送延迟闸：实测 AddMsg 紧跟接收会压制微信 app 内提示音（1.2.8 A/B 实锤），
-        // 统一延迟 2s 发送——提示音先播，发送后行，两不相扰
-        { WRInSend = NO; return WRDelaySend(targetId, text); }
+        // v1.2.10：延迟在入口层做（WRDelaySend），核心函数直接发送
         // v2.3.2 安全线：解析失败绝不裸发（防错发）；标准 id 格式直通不走解析
         BOOL isPlainID = [targetId isEqualToString:@"filehelper"] || [targetId hasSuffix:@"@chatroom"]
             || [targetId hasPrefix:@"wxid_"] || [targetId hasPrefix:@"gh_"];
