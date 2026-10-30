@@ -20,6 +20,7 @@ static void wrLog(NSString *msg);
 static void WRResolveSelfWxid(void);   // v1.1.11 前置声明（WRSendMessage 在定义前调用）
 static void WRDiagIfEnabled(void);     // v1.1.11 前置声明（B hook 在定义前调用）
 static void WRProcessIncoming(unsigned int msgType, NSString *content, NSString *fromUsr, NSString *actualUsr, BOOL isSender, NSString *msgID); // v1.2.4 前置声明（hook 在定义前调用）
+static dispatch_queue_t WRMsgQueue(void); // v1.2.5 前置声明（hook 在定义前调用）
 static NSString *WRSelfWxid;           // v1.1.12：纯 tentative（不带初始化），正式定义在 resolve 段
 // v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
 // MMContextManager.defaultManager → 当前 MMContext（v1.1.9：ctx 自带 getService:，直接用）
