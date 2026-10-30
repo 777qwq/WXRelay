@@ -691,6 +691,52 @@ static void WRDiagRun(void) {
         [r appendString:@"  (诊断不真发消息)\n"];
     } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
 
+    // v1.2.3 探针[6]：WxNotify 适配面——按 WxNotify 源码依赖清单逐项普查
+    // （服务入口已有 [1]/[4] 覆盖；这里测它 hook/调用的类与选择器在当前微信上是否存在）
+    @try {
+        [r appendString:@"\n[6] WxNotify 适配面\n"];
+        Class LN = objc_getClass("MMLocalNotificationMgr");
+        [r appendFormat:@"  MMLocalNotificationMgr: %@\n", LN ? @"有" : @"无"];
+        if (LN) {
+            [r appendFormat:@"  onServiceInit: %@\n", [LN instancesRespondToSelector:@selector(onServiceInit)] ? @"有" : @"无"];
+            [r appendFormat:@"  showPushWithMessageWrap:identifier:fireDate:isFromVoipPush:shouldSilent:: %@\n",
+              [LN instancesRespondToSelector:NSSelectorFromString(@"showPushWithMessageWrap:identifier:fireDate:isFromVoipPush:shouldSilent:")] ? @"有" : @"无"];
+        }
+        Class CM6 = objc_getClass("CMessageMgr");
+        if (CM6) {
+            [r appendFormat:@"  MainThreadNotifyToExt:: %@\n", [CM6 instancesRespondToSelector:NSSelectorFromString(@"MainThreadNotifyToExt:")] ? @"有" : @"无"];
+            [r appendFormat:@"  AsyncOnPushMsg:isAlwaysShow:: %@\n", [CM6 instancesRespondToSelector:NSSelectorFromString(@"AsyncOnPushMsg:isAlwaysShow:")] ? @"有" : @"无"];
+            [r appendFormat:@"  onNewSyncShowPush:isAlwaysShow:: %@\n", [CM6 instancesRespondToSelector:NSSelectorFromString(@"onNewSyncShowPush:isAlwaysShow:")] ? @"有" : @"无"];
+            [r appendFormat:@"  isChatStatusNotifyOpenForMsgWrap:: %@\n", [CM6 instancesRespondToSelector:NSSelectorFromString(@"isChatStatusNotifyOpenForMsgWrap:")] ? @"有" : @"无"];
+        }
+        Class W6 = objc_getClass("CMessageWrap");
+        if (W6) {
+            [r appendFormat:@"  GetDisplayContent: %@\n", [W6 instancesRespondToSelector:NSSelectorFromString(@"GetDisplayContent")] ? @"有" : @"无"];
+            [r appendFormat:@"  isSenderFromMsgWrap:: %@\n", [W6 instancesRespondToSelector:NSSelectorFromString(@"isSenderFromMsgWrap:")] ? @"有" : @"无"];
+        }
+        Class CCM = objc_getClass("CContactMgr");
+        if (CCM) {
+            NSMutableArray *hits = [NSMutableArray array];
+            for (NSString *n in @[@"getContactByName:", @"getContactByUserName:", @"getContactByUsrName:", @"getContact:", @"getSelfContact"]) {
+                if ([CCM instancesRespondToSelector:NSSelectorFromString(n)]) [hits addObject:n];
+            }
+            [r appendFormat:@"  CContactMgr 查找法: %@\n", hits.count ? [hits componentsJoinedByString:@" "] : @"(全无)"];
+        }
+        Class AD = objc_getClass("MicroMessengerAppDelegate");
+        [r appendFormat:@"  MicroMessengerAppDelegate.isForeground: %@\n", (AD && [AD instancesRespondToSelector:NSSelectorFromString(@"isForeground")]) ? @"有" : @"无"];
+        Class AM = objc_getClass("AppMonitorImpl");
+        [r appendFormat:@"  AppMonitorImpl.IsAppInBackground: %@\n", (AM && [AM instancesRespondToSelector:NSSelectorFromString(@"IsAppInBackground")]) ? @"有" : @"无"];
+        @try {
+            Class UNCC = objc_getClass("UNUserNotificationCenter");
+            id unc = UNCC ? ((id(*)(id,SEL))objc_msgSend)(UNCC, @selector(currentNotificationCenter)) : nil;
+            [r appendFormat:@"  UNUserNotificationCenter: %@\n", unc ? @"有" : @"nil"];
+        } @catch (NSException *e) { [r appendString:@"  UNUserNotificationCenter: 异常\n"]; }
+        Class INP = objc_getClass("INPerson");
+        [r appendFormat:@"  Intents(INPerson/INPersonHandle/INSendMessageIntent/INSpeakableString): %@\n",
+          (INP && objc_getClass("INPersonHandle") && objc_getClass("INSendMessageIntent") && objc_getClass("INSpeakableString")) ? @"齐" : @"缺"];
+        [r appendString:@"  (仅供 WxNotify 版本适配对照，WXRelay 自身不依赖)\n"];
+    } @catch (NSException *e) { [r appendFormat:@"  EXC: %@\n", e.name]; }
+
         WRDiagWrite(r);
     [r appendString:@"===== 诊断结束 =====\n"];
     // v1.1.11 诊断改版：结果写微信沙盒 tmp/wxrelay-diag.log（与 wxrelay.log 同目录），不再走剪贴板/CFPreferences
