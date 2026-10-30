@@ -19,6 +19,7 @@
 static void wrLog(NSString *msg);
 static void WRResolveSelfWxid(void);   // v1.1.11 前置声明（WRSendMessage 在定义前调用）
 static void WRDiagIfEnabled(void);     // v1.1.11 前置声明（B hook 在定义前调用）
+static void WRProcessIncoming(unsigned int msgType, NSString *content, NSString *fromUsr, NSString *actualUsr, BOOL isSender, NSString *msgID); // v1.2.4 前置声明（hook 在定义前调用）
 static NSString *WRSelfWxid;           // v1.1.12：纯 tentative（不带初始化），正式定义在 resolve 段
 // v1.1.6 服务入口自适应：8.0.7x+ 走 +[MMServiceCenter defaultCenter]；8.0.5x~7x 走
 // MMContextManager.defaultManager → 当前 MMContext（v1.1.9：ctx 自带 getService:，直接用）
@@ -445,47 +446,68 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
             wrLog([NSString stringWithFormat:@"B: 下游hook异常已拦截: %@ %@", e.name, e.reason]);
         }
     }
+    // v1.2.4 钩子只当邮差：微信消息线程（提示音决策点所在）上只做就绪翻转与字段快照，
+    // 重活（就绪初始化/补发/诊断/通讯录扫描/规则匹配/落盘）整体进后台串行队列。
+    // 否则 hook 内同步重活会堵住微信自己的 app 内提示音管线（微信内无声的根因）。
     @try {
-        // 候选参数序归一：单参候选时 wrap 落在 arg1
         if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
         if (WRInSend) return; // 发送中：跳过本次回声/重入
         if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
-        // v1.1.7 就绪门置位：首条消息到达 = 微信消息管线就绪 → 惰性解析自身 wxid + 补发积压任务
-        if (!WRReady) {
-            WRReady = YES;
-            wrLog(@"B: first message -> ready, lazy resolve");
-            WRResolveSelfWxid();
-            WRFlushTasks();
-            WRDiagIfEnabled(); // v1.1.11：诊断开关开着就绪后自动跑一次
-        }
-        WRWriteMsgSourceFlag();
-        // 收文本 + 引用消息（引用=msgType 49 的 appmsg XML，type 57 + refermsg 节点，CMessageWrap isReferMsgType 同源）；系统消息/媒体仍不收
+        if (!WRReady) { WRReady = YES; wrLog(@"B: first message -> ready (work deferred to queue)"); }
+        // 字段快照：廉价 KVC 读，wrap 归还微信后异步块不再触碰
         unsigned int msgType = 0;
         if ([wrap respondsToSelector:@selector(m_uiMessageType)]) msgType = ((unsigned int(*)(id,SEL))objc_msgSend)(wrap, @selector(m_uiMessageType));
-        if (msgType != 1 && msgType != 49) return;
         NSString *content = [wrap respondsToSelector:@selector(m_nsContent)] ? WRStr([wrap valueForKey:@"m_nsContent"]) : nil;
+        NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? WRStr([wrap valueForKey:@"m_nsFromUsr"]) : nil;
+        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsRealChatUsr)] ? WRStr([wrap valueForKey:@"m_nsRealChatUsr"]) : nil;
+        if (actualUsr.length == 0 && [wrap respondsToSelector:@selector(m_nsActualUsr)]) actualUsr = WRStr([wrap valueForKey:@"m_nsActualUsr"]);
+        BOOL isSender = NO;
+        if ([wrap respondsToSelector:@selector(m_bIsSender)]) isSender = ((BOOL(*)(id,SEL))objc_msgSend)(wrap, @selector(m_bIsSender));
+        NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
+        dispatch_async(WRMsgQueue(), ^{
+            WRProcessIncoming(msgType, content, fromUsr, actualUsr, isSender, msgID);
+        });
+    } @catch (NSException *e) {
+        wrLog([NSString stringWithFormat:@"B EXC: %@ %@", e.name, e.reason]);
+    }
+}
+
+// v1.2.4 后台串行队列：消息处理整体离开微信消息线程；串行保证时序 + 免锁
+static dispatch_queue_t WRMsgQueue(void) {
+    static dispatch_queue_t q = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ q = dispatch_queue_create("cn.qwq.wxrelay.msgproc", DISPATCH_QUEUE_SERIAL); });
+    return q;
+}
+
+static BOOL WRBootstrapped = NO; // v1.2.4 就绪后的一次性初始化只跑一次（队列内判定，免 volatile 竞态）
+
+static void WRProcessIncoming(unsigned int msgType, NSString *content, NSString *fromUsr, NSString *actualUsr, BOOL isSender, NSString *msgID) {
+    @try {
+        // 一次性初始化（原 v1.1.7 就绪门重活）：解析 wxid + 补发积压 + 诊断
+        if (!WRBootstrapped) {
+            WRBootstrapped = YES;
+            wrLog(@"B: queue bootstrap: lazy resolve + flush");
+            WRResolveSelfWxid();
+            WRFlushTasks();
+            WRDiagIfEnabled();
+        }
+        WRWriteMsgSourceFlag();
+        if (msgType != 1 && msgType != 49) return;
         if (content.length == 0) return;
         if (msgType == 49) {
             content = WRParseReferAppMsg(content);
             if (content.length == 0) return; // 非 type57 的 appmsg（链接/文件/小程序等）维持不转
         }
         // 自发消息防线：官方 isSender 位 + 已发文本 60 秒回显双保险，杜绝回环
-        BOOL isSender = NO;
-        if ([wrap respondsToSelector:@selector(m_bIsSender)]) isSender = ((BOOL(*)(id,SEL))objc_msgSend)(wrap, @selector(m_bIsSender));
         if (isSender || WRTextWasRecentlySent(content)) return;
-        NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? WRStr([wrap valueForKey:@"m_nsFromUsr"]) : nil;
-        // v1.0.5: m_nsActualUsr 已被 8.x 新架构除名（头文件 0 命中），发言人改取 m_nsRealChatUsr，旧架构字段保留兜底
-        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsRealChatUsr)] ? WRStr([wrap valueForKey:@"m_nsRealChatUsr"]) : nil;
-        if (actualUsr.length == 0 && [wrap respondsToSelector:@selector(m_nsActualUsr)]) actualUsr = WRStr([wrap valueForKey:@"m_nsActualUsr"]);
         if (fromUsr.length == 0) return;
-        // v2.8.7 自身消息防线：来源 wxid 是自己（单聊直发 / 群聊 actualUsr）一律跳过
+        // v1.0.5: m_nsActualUsr 已被 8.x 新架构除名（头文件 0 命中），发言人改取 m_nsRealChatUsr，旧架构字段保留兜底
         if (WRSelfWxid.length && ([fromUsr isEqualToString:WRSelfWxid]
             || (actualUsr.length && [actualUsr isEqualToString:WRSelfWxid]))) return;
         BOOL isGroup = [fromUsr hasSuffix:@"@chatroom"];
         NSString *chatName = WRContactDisplayName(fromUsr);
-        // v1.0.8 回退：getChatRoomMemberDisplayName: 在 8.0.78 上炸（1.0.5 起闪退的头号嫌疑，头文件系 8.0.54/55），
-// v1.0.11 群昵称：m_nsChatRoomData XML 的 DisplayName（群昵称）优先，通讯录备注/昵称兜底；
-        // 1.0.5 的 getChatRoomMemberDisplayName: 直调已废（8.0.78 内部炸），数据解析全程零微信方法调用
+        // v1.0.11 群昵称：m_nsChatRoomData XML 的 DisplayName（群昵称）优先，通讯录备注/昵称兜底
         NSString *speaker = nil;
         if (isGroup && actualUsr.length) {
             id gc = WRFindContactObj(fromUsr);
@@ -494,8 +516,7 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
         }
         NSString *title = chatName ?: fromUsr;
         NSString *subtitle = isGroup ? (speaker ?: @"") : @"";
-        NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
-        if (msgID.length == 0) msgID = [NSString stringWithFormat:@"%u-%lu", (unsigned int)msgType, (unsigned long)[content hash]];
+        if (msgID.length == 0) msgID = [NSString stringWithFormat:@"%u-%lu", msgType, (unsigned long)[content hash]];
         WRSpoolMsgRecord(@{
             @"bid": @"com.tencent.xin",
             @"title": title,
