@@ -448,30 +448,12 @@ static void WRAsyncOnAddMsgHook(id self, SEL _cmd, id arg1, id wrap) {
             wrLog([NSString stringWithFormat:@"B: 下游hook异常已拦截: %@ %@", e.name, e.reason]);
         }
     }
-    // v1.2.6 二分诊断：hook 体只留 orig 放行——快照/队列/spool/就绪门全部摘除，
-    // 用于判定"微信内无声"是 hook 存在本身还是摘除段里某段逻辑。测完恢复。
+    // v1.2.7 二分第二刀：快照/队列/spool 全保留，仅禁 AddMsg 发送（WRSendMessage 内置闸）
     @try {
-        if (!WRReady) { WRReady = YES; }
         if ([WRHookedSelectorName isEqualToString:@"OnNewMessage:"]) wrap = arg1;
         if (WRInSend) return; // 发送中：跳过本次回声/重入
         if (![wrap isKindOfClass:[objc_getClass("CMessageWrap") class]]) return;
-        // v1.2.4 邮差化：消息线程只做字段快照，重活进后台串行队列
         if (!WRReady) { WRReady = YES; }
-        unsigned int msgType = 0;
-        if ([wrap respondsToSelector:@selector(m_uiMessageType)]) msgType = ((unsigned int(*)(id,SEL))objc_msgSend)(wrap, @selector(m_uiMessageType));
-        NSString *content = [wrap respondsToSelector:@selector(m_nsContent)] ? WRStr([wrap valueForKey:@"m_nsContent"]) : nil;
-        NSString *fromUsr = [wrap respondsToSelector:@selector(m_nsFromUsr)] ? WRStr([wrap valueForKey:@"m_nsFromUsr"]) : nil;
-        NSString *actualUsr = [wrap respondsToSelector:@selector(m_nsRealChatUsr)] ? WRStr([wrap valueForKey:@"m_nsRealChatUsr"]) : nil;
-        if (actualUsr.length == 0 && [wrap respondsToSelector:@selector(m_nsActualUsr)]) actualUsr = WRStr([wrap valueForKey:@"m_nsActualUsr"]);
-        BOOL isSender = NO;
-        if ([wrap respondsToSelector:@selector(m_bIsSender)]) isSender = ((BOOL(*)(id,SEL))objc_msgSend)(wrap, @selector(m_bIsSender));
-        NSString *msgID = [wrap respondsToSelector:@selector(m_nsMsgId)] ? WRStr([wrap valueForKey:@"m_nsMsgId"]) : nil;
-        // v1.2.7 二分第二刀：spool/快照/队列全保留，仅禁 AddMsg 发送（WRSendMessage 内部置闸）
-        dispatch_async(WRMsgQueue(), ^{
-            WRProcessIncoming(msgType, content, fromUsr, actualUsr, isSender, msgID);
-        });
-        return;
-        // 字段快照：廉价 KVC 读，wrap 归还微信后异步块不再触碰
         unsigned int msgType = 0;
         if ([wrap respondsToSelector:@selector(m_uiMessageType)]) msgType = ((unsigned int(*)(id,SEL))objc_msgSend)(wrap, @selector(m_uiMessageType));
         NSString *content = [wrap respondsToSelector:@selector(m_nsContent)] ? WRStr([wrap valueForKey:@"m_nsContent"]) : nil;
